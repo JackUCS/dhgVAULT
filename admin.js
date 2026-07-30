@@ -4,7 +4,7 @@
     const STORAGE_VIEWS = 'dhgatevault_pageviews';
     const STORAGE_VAULT_CREDS = 'dhgatevault_vault_creds';
     // Admin password hash (SHA-256 of your actual password – generate with console)
-    const ADMIN_PASS_HASH = '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918'; // placeholder: 'admin123'
+    const ADMIN_PASS_HASH = 'bc98688806fc3aabdbcc24666fb9563c1b6b3d7c324903e8e5f2601b228fcd49'; 
 
     const $toast = document.getElementById('toastContainer');
     let isUnlocked = false;
