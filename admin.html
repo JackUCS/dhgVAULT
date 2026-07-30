@@ -26,43 +26,44 @@
             </div>
         </div>
 
+        <!-- Header -->
         <div class="admin-header">
             <h2><i class="bi bi-speedometer2"></i> Dashboard</h2>
             <button class="btn btn--ghost btn--sm" id="btnLogout"><i class="bi bi-box-arrow-right"></i> Logout</button>
         </div>
 
-        <!-- Stats cards -->
-        <div class="admin-stats-grid" id="adminStatsGrid">
-            <div class="admin-stat-card">
-                <i class="bi bi-box-seam admin-stat-icon"></i>
-                <div class="admin-stat-value" id="adminTotalProducts">0</div>
-                <div class="admin-stat-label">Total Products</div>
+        <!-- Slim stats row -->
+        <div class="admin-stats-row">
+            <div class="admin-stat-slim">
+                <i class="bi bi-box-seam stat-slim-icon"></i>
+                <span class="stat-slim-value" id="adminTotalProducts">0</span>
+                <span class="stat-slim-label">Products</span>
             </div>
-            <div class="admin-stat-card">
-                <i class="bi bi-mouse2 admin-stat-icon"></i>
-                <div class="admin-stat-value" id="adminTotalClicks">0</div>
-                <div class="admin-stat-label">Affiliate Clicks</div>
+            <div class="admin-stat-slim">
+                <i class="bi bi-mouse2 stat-slim-icon"></i>
+                <span class="stat-slim-value" id="adminTotalClicks">0</span>
+                <span class="stat-slim-label">Clicks</span>
             </div>
-            <div class="admin-stat-card">
-                <i class="bi bi-eye admin-stat-icon"></i>
-                <div class="admin-stat-value" id="adminTotalViews">0</div>
-                <div class="admin-stat-label">Page Views</div>
+            <div class="admin-stat-slim">
+                <i class="bi bi-eye stat-slim-icon"></i>
+                <span class="stat-slim-value" id="adminTotalViews">0</span>
+                <span class="stat-slim-label">Views</span>
             </div>
-            <div class="admin-stat-card">
-                <i class="bi bi-star admin-stat-icon"></i>
-                <div class="admin-stat-value" id="adminTopProduct">—</div>
-                <div class="admin-stat-label">Top Product</div>
+            <div class="admin-stat-slim">
+                <i class="bi bi-star stat-slim-icon"></i>
+                <span class="stat-slim-value" id="adminTopProduct">—</span>
+                <span class="stat-slim-label">Top Product</span>
             </div>
         </div>
 
-        <!-- Add Product (collapsible) -->
+        <!-- Add Product (compact collapsible) -->
         <div class="admin-card collapsible">
             <button class="collapsible__trigger">
                 <i class="bi bi-plus-circle"></i> Add New Product
                 <i class="bi bi-chevron-down collapsible__arrow"></i>
             </button>
             <div class="collapsible__content">
-                <form id="addProductForm" class="admin-form">
+                <form id="addProductForm" class="admin-form compact-form">
                     <div class="form-row">
                         <div class="form-group"><label>DHGate Link</label><input type="url" id="inputDhgateLink" required disabled></div>
                         <div class="form-group"><label>Thumbnail URL</label><input type="url" id="inputThumbnailUrl" required disabled></div>
@@ -75,7 +76,7 @@
                         <div class="form-group"><label>Affiliate Link</label><input type="url" id="inputAffiliateLink" required disabled></div>
                         <div class="form-group"><label>Category</label>
                             <select id="inputCategory" disabled>
-                                <option value="shirts">Shirts</option><option value="jeans">Jeans</option><option value="joggers">Joggers</option>
+                                <option value="shirts">Shirts</option><option value="pants">Pants</option><option value="joggers">Joggers</option>
                                 <option value="shoes">Shoes</option><option value="slides">Slides</option><option value="chains">Chains</option><option value="accessories">Accessories</option>
                             </select>
                         </div>
@@ -85,12 +86,12 @@
                         <div class="form-group"><label>Review Photos</label><input type="file" id="inputReviewPhotos" accept="image/*" multiple disabled></div>
                     </div>
                     <div class="review-previews" id="reviewPreviews"></div>
-                    <button type="submit" class="btn btn--primary" disabled>✨ Add Product</button>
+                    <button type="submit" class="btn btn--primary btn--full" disabled>✨ Add Product</button>
                 </form>
             </div>
         </div>
 
-        <!-- Vault Credentials (collapsible) -->
+        <!-- Vault Credentials (compact) -->
         <div class="admin-card collapsible">
             <button class="collapsible__trigger">
                 <i class="bi bi-lock-fill"></i> Vault Credentials
@@ -105,7 +106,7 @@
             </div>
         </div>
 
-        <!-- Click Performance -->
+        <!-- Click Performance Chart -->
         <div class="admin-card">
             <h3><i class="bi bi-bar-chart-fill"></i> Click Performance</h3>
             <div class="bar-chart-wrapper">
@@ -113,7 +114,8 @@
                 <div class="bar-chart-tooltip" id="chartTooltip" style="display:none;"></div>
             </div>
         </div>
-        <!-- Product Click Details -->
+
+        <!-- Product Table -->
         <div class="admin-card">
             <h3><i class="bi bi-table"></i> Product Click Details</h3>
             <div class="admin-table-wrap">
@@ -123,9 +125,9 @@
                             <th>Product</th>
                             <th>Category</th>
                             <th>Clicks</th>
-                            <th>Last Clicked</th>
+                            <th>Last</th>
                             <th>Priority</th>
-                            <th style="width:80px;">Actions</th>
+                            <th style="width:60px;"></th>
                         </tr>
                     </thead>
                     <tbody id="adminTableBody"></tbody>
