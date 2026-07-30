@@ -844,9 +844,54 @@ body {
    RESPONSIVE FINE-TUNING
    =========================== */
 @media(max-width:768px){
-    .nav__inner { padding:10px 16px; }
-    .hero__title { font-size:1.8rem; }
-    .footer__inner { flex-direction:column; align-items:flex-start; gap:20px; }
-    .footer__links, .footer__social { justify-content:flex-start; }
-    .app-container { padding: 0 20px; }
+    /* Navbar – shrink gap and allow wrap */
+    .nav__inner {
+        padding: 10px 16px;
+        gap: 12px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    .nav__logo {
+        font-size: 1.2rem;
+    }
+    .nav__links {
+        gap: 14px;
+        flex-wrap: wrap;
+        justify-content: center;
+        width: 100%;                /* full width to stack below logo if needed */
+    }
+    .nav__links a {
+        font-size: 0.78rem;
+    }
+
+    .hero__title { font-size: 1.8rem; }
+
+    /* Footer – center everything on mobile */
+    .footer__inner {
+        flex-direction: column;
+        align-items: center;          /* center columns horizontally */
+        gap: 30px;
+        text-align: center;
+    }
+    .footer__col {
+        align-items: center;          /* center content within each column */
+        text-align: center;
+    }
+    .footer__links, .footer__social {
+        justify-content: center;      /* center links and icons */
+    }
+    .footer__links a {
+        display: block;
+        text-align: center;
+    }
+
+    /* General container padding */
+    .app-container {
+        padding: 0 16px;
+    }
+
+    /* Product grid already single column, fine */
+    .products-grid {
+        gap: 16px;
+    }
 }
