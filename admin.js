@@ -22,19 +22,19 @@
 
     function setLocked(locked) {
         isUnlocked = !locked;
-        const inputs = document.querySelectorAll('#addProductForm input, #addProductForm select, #addProductForm textarea, #addProductForm button[type="submit"], #btnSaveVaultCreds, #btnResetAnalytics');
+        // Disable form inputs and buttons, including trash buttons
+        const inputs = document.querySelectorAll('#addProductForm input, #addProductForm select, #addProductForm textarea, #addProductForm button[type="submit"], #btnSaveVaultCreds, #btnResetAnalytics, .btn--danger');
         inputs.forEach(el => el.disabled = locked);
         document.getElementById('adminLockOverlay').style.display = locked ? 'flex' : 'none';
-        if (!locked) {
-            // Collapse all sections by default when unlocking? Keep them as they were.
-        }
+        // When unlocking, re-render table to activate/deactivate trash buttons
+        if (!locked) loadData();
     }
 
     async function attemptUnlock() {
         const pw = document.getElementById('adminUnlockPassword').value;
         if (!pw) return;
         const hash = await hashPassword(pw);
-        if (hash === ADMIN_PASS_HASH ) { 
+        if (hash === ADMIN_PASS_HASH) {
             setLocked(false);
             document.getElementById('unlockError').style.display = 'none';
             document.getElementById('adminUnlockPassword').value = '';
@@ -42,6 +42,26 @@
             document.getElementById('unlockError').style.display = 'block';
         }
     }
+
+    // --- DELETE PRODUCT ---
+    window.deleteProduct = function(id) {
+        if (!isUnlocked) {
+            showToast('🔒 Unlock admin first');
+            return;
+        }
+        if (!confirm('Delete this product? This cannot be undone.')) return;
+
+        let products = getProducts().filter(p => p.id !== id);
+        localStorage.setItem(STORAGE_PRODUCTS, JSON.stringify(products));
+
+        // Clean up analytics data for that product
+        const analytics = getAnalytics();
+        delete analytics[id];
+        localStorage.setItem(STORAGE_ANALYTICS, JSON.stringify(analytics));
+
+        loadData();
+        showToast('🗑️ Product deleted');
+    };
 
     function init() {
         document.getElementById('btnLogout').addEventListener('click', () => window.location.href = 'index.html');
@@ -67,9 +87,9 @@
             });
         });
 
-            // Start locked
-            setLocked(true);
-        }
+        // Start locked
+        setLocked(true);
+    }  // ← this brace was missing in your snippet, now fixed
 
     function getProducts() { return JSON.parse(localStorage.getItem(STORAGE_PRODUCTS) || '[]'); }
     function getAnalytics() { return JSON.parse(localStorage.getItem(STORAGE_ANALYTICS) || '{}'); }
@@ -114,6 +134,7 @@
         });
     }
 
+    // --- UPDATED renderTable with trash button ---
     function renderTable(products, analytics) {
         const tbody = document.getElementById('adminTableBody'); tbody.innerHTML = '';
         const sorted = [...products].sort((a, b) => (analytics[b.id]?.clicks || 0) - (analytics[a.id]?.clicks || 0));
@@ -121,14 +142,26 @@
             const clicks = analytics[p.id]?.clicks || 0,
                 last = analytics[p.id]?.lastClicked ? new Date(analytics[p.id].lastClicked).toLocaleDateString() : 'Never';
             const priority = clicks >= 10 ? '🔥 High' : clicks >= 4 ? '⭐ Medium' : 'Low';
-            tbody.innerHTML += `<tr><td>${p.title.substr(0, 30)}</td><td>${p.category}</td><td>${clicks}</td><td>${last}</td><td>${priority}</td></tr>`;
+            // Build the row with a trash button (disabled when locked)
+            const disabledAttr = isUnlocked ? '' : 'disabled';
+            tbody.innerHTML += `<tr>
+                <td>${p.title.substr(0, 30)}</td>
+                <td>${p.category}</td>
+                <td>${clicks}</td>
+                <td>${last}</td>
+                <td>${priority}</td>
+                <td>
+                    <button class="btn btn--ghost btn--sm btn--danger" onclick="deleteProduct('${p.id}')" ${disabledAttr}>
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            </tr>`;
         });
     }
 
     async function handleAddProduct(e) {
         e.preventDefault();
         if (!isUnlocked) return;
-        // ... same product creation code as before ...
         const files = document.getElementById('inputReviewPhotos').files;
         const reviewImages = [];
         for (let f of files) {
