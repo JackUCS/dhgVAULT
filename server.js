@@ -17,14 +17,29 @@ if (!ADMIN_PASS) {
     console.error('❌ ADMIN_PASS environment variable is not set!');
 }
 
-// 1. Protect /admin.html BEFORE serving static files
+// ---- Clean‑URL middleware: map /disclaimer → disclaimer.html etc. ----
+app.use((req, res, next) => {
+    // If the request has no file extension and is not the root, rewrite to .html
+    if (!path.extname(req.path) && req.path !== '/') {
+        // Special case: /admin should still be caught by basicAuth later,
+        // but we'll rewrite it to /admin.html so the auth middleware matches.
+        if (req.path === '/admin') {
+            req.url = '/admin.html';
+        } else {
+            req.url = req.path + '.html';
+        }
+    }
+    next();
+});
+
+// 1. Protect /admin.html (and now also /admin thanks to the rewrite)
 app.use('/admin.html', basicAuth({
-    users: { [ADMIN_USER]: ADMIN_PASS },   // dynamic user:pass from env
-    challenge: true,                       // show browser login dialog
+    users: { [ADMIN_USER]: ADMIN_PASS },
+    challenge: true,
     realm: 'DHGateVault Admin'
 }));
 
-// 2. Now serve all other files (CSS, JS, images, other HTML)
+// 2. Serve static files (HTML, CSS, JS, images)
 app.use(express.static(__dirname));
 
 // 3. Fallback for any other route (just in case)
