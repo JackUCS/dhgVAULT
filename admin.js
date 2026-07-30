@@ -34,7 +34,7 @@
         const pw = document.getElementById('adminUnlockPassword').value;
         if (!pw) return;
         const hash = await hashPassword(pw);
-        if (hash === ADMIN_PASS_HASH || pw === 'admin123') { // fallback during setup
+        if (hash === ADMIN_PASS_HASH ) { 
             setLocked(false);
             document.getElementById('unlockError').style.display = 'none';
             document.getElementById('adminUnlockPassword').value = '';
@@ -67,9 +67,9 @@
             });
         });
 
-        // Start locked
-        setLocked(true);
-    }
+            // Start locked
+            setLocked(true);
+        }
 
     function getProducts() { return JSON.parse(localStorage.getItem(STORAGE_PRODUCTS) || '[]'); }
     function getAnalytics() { return JSON.parse(localStorage.getItem(STORAGE_ANALYTICS) || '{}'); }
