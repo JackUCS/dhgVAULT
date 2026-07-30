@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <div class="cursor-glow" id="cursorGlow"></div>
     <div class="bg-orb bg-orb--1"></div>
     <div class="bg-orb bg-orb--2"></div>
     <div class="bg-orb bg-orb--3"></div>
@@ -23,19 +24,24 @@
             <a href="index.html" class="nav__logo">
                 <i class="bi bi-shield-lock-fill nav__logo-icon"></i> DHGateVault
             </a>
-            <div class="nav__links">
-                <a href="disclaimer.html">Disclaimer</a>
-                <a href="privacy.html">Privacy</a>
+            <div class="nav__right">
+                <div class="nav__links">
+                    <a href="disclaimer.html">Disclaimer</a>
+                    <a href="privacy.html">Privacy</a>
+                </div>
+                <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme">
+                    <i class="bi bi-sun-fill"></i>
+                </button>
             </div>
         </div>
     </nav>
 
     <main class="app-container" id="mainContent">
         <section class="hero">
-            <div class="hero__badge"><i class="bi bi-fire"></i>Fashion Reps Community</div>
+            <div class="hero__badge"><i class="bi bi-fire"></i>Male Fashion Reps Community</div>
             <h1 class="hero__title">Unlock the Best<br><span class="gradient-text">DHGate Grails</span></h1>
             <p class="hero__desc">Hand‑tested, real‑photo reviews of the best men’s reps.</p>
-            <p class="hero__trust"><i class="bi bi-patch-check-fill"></i> Vetted by the fashionreps community</p>
+            <p class="hero__trust"><i class="bi bi-patch-check-fill"></i>A trustable player in the male fashion-reps community</p>
             <p class="hero__disclosure"><i class="bi bi-info-circle"></i> We may earn a commission on purchases. <a href="disclaimer.html" style="color:var(--accent-3);">Learn more</a></p>
         </section>
 

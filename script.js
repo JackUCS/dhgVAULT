@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const STORAGE_PRODUCTS = 'dhgatevault_products';
     const STORAGE_ANALYTICS = 'dhgatevault_analytics';
     const STORAGE_VIEWS = 'dhgatevault_pageviews';
+    const STORAGE_THEME = 'dhgatevault_theme';   // new
 
     // ---------- data helpers ----------
     function getProducts() {
@@ -201,6 +202,25 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // ---------- theme toggle ----------
+    const themeToggle = document.getElementById('themeToggle');
+    const themeIcon = themeToggle?.querySelector('i');
+    function setTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem(STORAGE_THEME, theme);
+        if (themeIcon) {
+            themeIcon.className = theme === 'light' ? 'bi bi-moon-fill' : 'bi bi-sun-fill';
+        }
+    }
+    const savedTheme = localStorage.getItem(STORAGE_THEME) || 'dark';
+    setTheme(savedTheme);
+    if (themeToggle) {
+        themeToggle.addEventListener('click', () => {
+            const current = document.documentElement.getAttribute('data-theme') || 'dark';
+            setTheme(current === 'dark' ? 'light' : 'dark');
+        });
+    }
+
     // ---------- start everything ----------
     incrementPageViews();
     renderProducts();
@@ -218,3 +238,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// Subtle cursor glow (desktop only)
+const glow = document.getElementById('cursorGlow');
+if (glow && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+    glow.style.display = 'block';
+    document.addEventListener('mousemove', e => {
+        glow.style.left = e.clientX + 'px';
+        glow.style.top = e.clientY + 'px';
+    });
+}
