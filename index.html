@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DHGateVault — Curated Men's Fashion Reps</title>
+    <meta name="description" content="DHGateVault is the trusted resource for men's fashion reps. Real reviews, real photos, hand‑picked DHGate finds.">
+    <meta name="keywords" content="fashionreps, DHGate reviews, reddit DHGate, DHGateVault, men's fashion reps">
+    <meta property="og:title" content="DHGateVault — Curated DHGate Fashion Reps">
+    <meta property="og:description" content="Real reviews on the best men's DHGate clothing.">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="bg-orb bg-orb--1"></div>
+    <div class="bg-orb bg-orb--2"></div>
+    <div class="bg-orb bg-orb--3"></div>
+    <div class="grid-overlay"></div>
+    <div class="toast-container" id="toastContainer"></div>
+
+    <nav class="nav">
+        <div class="nav__inner">
+            <a href="index.html" class="nav__logo">
+                <i class="bi bi-shield-lock-fill nav__logo-icon"></i> DHGateVault
+            </a>
+            <div class="nav__links">
+                <a href="disclaimer.html">Disclaimer</a>
+                <a href="privacy.html">Privacy</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="app-container" id="mainContent">
+        <section class="hero">
+            <div class="hero__badge"><i class="bi bi-fire"></i> Male Fashion Reps Community</div>
+            <h1 class="hero__title">Unlock the Best<br><span class="gradient-text">DHGate Grails</span></h1>
+            <p class="hero__desc">Shirts, jeans, joggers, shoes, slides, chains — hand‑tested with real review photos.</p>
+            <p class="hero__trust"><i class="bi bi-patch-check-fill"></i> Trusted by 1,000+ fashionreps community members</p>
+            <p class="hero__disclosure"><i class="bi bi-info-circle"></i> We may earn a commission on purchases. <a href="disclaimer.html" style="color:var(--accent-3);">Learn more</a></p>
+        </section>
+
+        <div class="filters" id="filtersContainer">
+            <button class="filter-pill filter-pill--active" data-category="all">All</button>
+            <button class="filter-pill" data-category="shirts">Shirts</button>
+            <button class="filter-pill" data-category="jeans">Jeans</button>
+            <button class="filter-pill" data-category="joggers">Joggers</button>
+            <button class="filter-pill" data-category="shoes">Shoes</button>
+            <button class="filter-pill" data-category="slides">Slides</button>
+            <button class="filter-pill" data-category="chains">Chains</button>
+            <button class="filter-pill" data-category="accessories">Accessories</button>
+        </div>
+
+        <div class="products-grid" id="productsGrid"></div>
+        <div class="empty-state" id="emptyState" style="display:none;">
+            <div class="empty-state__icon"><i class="bi bi-bag-x"></i></div>
+            <h3>No fashion reps yet</h3>
+            <p>Check back soon for the best DHGate finds.</p>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="footer__inner">
+            <div class="footer__brand">
+                <span class="footer__logo"><i class="bi bi-shield-lock-fill"></i> DHGateVault</span>
+                <p class="footer__tagline">Your trusted source for men's fashion reps & real DHGate reviews.</p>
+            </div>
+            <div class="footer__links">
+                <a href="disclaimer.html">Legal Disclaimer</a>
+                <a href="privacy.html">Privacy Policy</a>
+                <a href="#">Contact</a>
+            </div>
+            <div class="footer__social">
+                <a href="#" aria-label="Reddit"><i class="bi bi-reddit"></i></a>
+                <a href="#" aria-label="Twitter"><i class="bi bi-twitter-x"></i></a>
+                <a href="#" aria-label="Instagram"><i class="bi bi-instagram"></i></a>
+            </div>
+        </div>
+        <div class="footer__disclaimer">
+            <p>DHGateVault is an independent affiliate marketing website. We may earn a commission on purchases made through our links. <a href="privacy.html">Privacy Policy</a> | <a href="disclaimer.html">Full Disclaimer</a></p>
+        </div>
+    </footer>
+
+    <!-- Cookie Consent Banner -->
+    <div id="cookieConsent" class="cookie-banner">
+        <p>We use cookies to improve your experience. By using our site you consent to our <a href="privacy.html">Privacy Policy</a>.</p>
+        <button id="cookieAccept" class="btn btn--sm btn--primary">Got it</button>
+    </div>
+
+    <div class="modal-overlay" id="lightboxOverlay">
+        <div style="position:relative; max-width:90vw; max-height:90vh;">
+            <button class="modal__close" id="btnLightboxClose" style="position:absolute; top:-10px; right:-10px;">✕</button>
+            <img id="lightboxImage" src="" alt="Review Photo" style="max-width:90vw; max-height:85vh; border-radius:var(--radius);">
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
