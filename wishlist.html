@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wishlist — DHGateVault</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="bg-orb bg-orb--1"></div>
+    <div class="bg-orb bg-orb--2"></div>
+    <div class="bg-orb bg-orb--3"></div>
+    <div class="grid-overlay"></div>
+    <div class="toast-container" id="toastContainer"></div>
+
+    <nav class="nav">
+        <div class="nav__inner">
+            <a href="/" class="nav__logo">
+                <i class="bi bi-shield-lock-fill nav__logo-icon"></i> DHGateVault
+            </a>
+            <div class="nav__right">
+                <div class="nav__links">
+                    <a href="/disclaimer" class="nav__pill">
+                        <i class="bi bi-file-earmark-text"></i> Disclaimer
+                    </a>
+                    <a href="/privacy" class="nav__pill">
+                        <i class="bi bi-shield-check"></i> Privacy
+                    </a>
+                </div>
+
+                <!-- Currency dropdown -->
+                <div class="currency-dropdown" id="currencyDropdown">
+                    <button class="currency-dropdown__trigger" type="button">
+                        <span id="currencyDisplay">USD $</span>
+                        <i class="bi bi-chevron-down currency-dropdown__icon"></i>
+                    </button>
+                    <div class="currency-dropdown__menu" id="currencyMenu">
+                        <button class="currency-option" data-currency="USD">USD $</button>
+                        <button class="currency-option" data-currency="GBP">GBP £</button>
+                        <button class="currency-option" data-currency="EUR">EUR €</button>
+                        <button class="currency-option" data-currency="CAD">CAD $</button>
+                        <button class="currency-option" data-currency="AUD">AUD $</button>
+                        <button class="currency-option" data-currency="JPY">JPY ¥</button>
+                        <button class="currency-option" data-currency="CNY">CNY ¥</button>
+                    </div>
+                </div>
+
+                <!-- Wishlist heart -->
+                <a href="wishlist.html" class="nav__wishlist" title="Wishlist">
+                    <i class="bi bi-heart"></i>
+                    <span class="wishlist-count" id="wishlistCount" style="display:none;">0</span>
+                </a>
+
+                <!-- Theme toggle -->
+                <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme">
+                    <i class="bi bi-sun-fill"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="app-container" style="padding:40px 20px;">
+        <h1 class="wishlist-title">
+            <i class="bi bi-heart-fill" style="color:var(--accent-3);"></i> Your Wishlist
+        </h1>
+        <div class="products-grid" id="wishlistGrid"></div>
+        <div id="emptyWishlist" class="empty-wishlist" style="display:none;">
+            <i class="bi bi-heart" style="font-size:3rem; opacity:0.5;"></i>
+            <h3>No saved items yet</h3>
+            <p>Tap the heart on any product to save it here.</p>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="footer__glow"></div>
+        <div class="footer__inner">
+            <div class="footer__col footer__brand">
+                <span class="footer__logo"><i class="bi bi-shield-lock-fill"></i> DHGateVault</span>
+                <p class="footer__desc">Your trusted source for men's fashion reps & honest DHGate reviews.</p>
+            </div>
+            <div class="footer__col footer__links">
+                <h4>Legal</h4>
+                <a href="/disclaimer">Disclaimer</a>
+                <a href="/privacy">Privacy Policy</a>
+                <a href="#">Contact</a>
+            </div>
+            <div class="footer__col footer__social">
+                <h4>Community</h4>
+                <div class="footer__social-icons">
+                    <a href="#" aria-label="Reddit"><i class="bi bi-reddit"></i></a>
+                    <a href="#" aria-label="Twitter"><i class="bi bi-twitter-x"></i></a>
+                    <a href="#" aria-label="Instagram"><i class="bi bi-instagram"></i></a>
+                </div>
+            </div>
+        </div>
+        <div class="footer__disclaimer">
+            <p>DHGateVault is an independent affiliate marketing website. We may earn a commission on purchases made through our links. <a href="/privacy">Privacy</a> · <a href="/disclaimer">Disclaimer</a></p>
+        </div>
+    </footer>
+
+    <script>
+        // ====================
+        // WISHLIST PAGE LOGIC
+        // ====================
+        (function() {
+            // ---------- THEME TOGGLE ----------
+            const themeToggle = document.getElementById('themeToggle');
+            const themeIcon = themeToggle?.querySelector('i');
+            function setTheme(theme) {
+                document.documentElement.setAttribute('data-theme', theme);
+                localStorage.setItem('dhgatevault_theme', theme);
+                if (themeIcon) themeIcon.className = theme === 'light' ? 'bi bi-moon-fill' : 'bi bi-sun-fill';
+            }
+            const savedTheme = localStorage.getItem('dhgatevault_theme') || 'dark';
+            setTheme(savedTheme);
+            themeToggle?.addEventListener('click', () => {
+                const current = document.documentElement.getAttribute('data-theme') || 'dark';
+                setTheme(current === 'dark' ? 'light' : 'dark');
+            });
+
+            // ---------- CURRENCY DROPDOWN ----------
+            let currentCurrency = 'USD';
+            let currentRate = 1;
+
+            const staticRates = {
+                USD: 1, GBP: 0.79, EUR: 0.92, CAD: 1.35, AUD: 1.50,
+                JPY: 145.0, CNY: 7.2,
+            };
+
+            async function fetchExchangeRate(currency) {
+                try {
+                    const res = await fetch(`https://open.er-api.com/v6/latest/USD`);
+                    const data = await res.json();
+                    return data.rates[currency] || staticRates[currency] || 1;
+                } catch {
+                    return staticRates[currency] || 1;
+                }
+            }
+
+            function updateCurrencyDisplay(currency) {
+                const display = document.getElementById('currencyDisplay');
+                if (display) {
+                    const symbol = { USD: '$', GBP: '£', EUR: '€', CAD: '$', AUD: '$', JPY: '¥', CNY: '¥' };
+                    display.textContent = currency + ' ' + (symbol[currency] || '');
+                }
+            }
+
+            function convertPrices() {
+                const formatter = new Intl.NumberFormat(undefined, { style: 'currency', currency: currentCurrency });
+                document.querySelectorAll('.product-card__price').forEach(el => {
+                    const usd = parseFloat(el.dataset.usdPrice);
+                    if (!isNaN(usd)) {
+                        el.textContent = formatter.format(usd * currentRate);
+                    }
+                });
+            }
+
+            async function initCurrency() {
+                const cookieCurrency = document.cookie.split('; ').find(row => row.startsWith('preferred_currency='))?.split('=')[1];
+                let currency = cookieCurrency || 'USD';
+                currentCurrency = currency;
+                currentRate = await fetchExchangeRate(currency);
+                updateCurrencyDisplay(currency);
+                document.cookie = `preferred_currency=${currency};max-age=31536000;path=/`;
+
+                const dropdown = document.getElementById('currencyDropdown');
+                const trigger = dropdown?.querySelector('.currency-dropdown__trigger');
+                const menu = document.getElementById('currencyMenu');
+                trigger?.addEventListener('click', () => dropdown.classList.toggle('open'));
+                document.addEventListener('click', (e) => {
+                    if (!dropdown?.contains(e.target)) dropdown?.classList.remove('open');
+                });
+                menu?.addEventListener('click', async (e) => {
+                    const option = e.target.closest('.currency-option');
+                    if (!option) return;
+                    const selected = option.dataset.currency;
+                    currentCurrency = selected;
+                    currentRate = await fetchExchangeRate(selected);
+                    updateCurrencyDisplay(selected);
+                    document.cookie = `preferred_currency=${selected};max-age=31536000;path=/`;
+                    convertPrices();
+                    dropdown.classList.remove('open');
+                });
+            }
+
+            // ---------- WISHLIST RENDERING ----------
+            const wishlist = JSON.parse(localStorage.getItem('dhgatevault_wishlist') || '[]');
+            const grid = document.getElementById('wishlistGrid');
+            const empty = document.getElementById('emptyWishlist');
+            const countBadge = document.getElementById('wishlistCount');
+
+            function updateEmptyState() {
+                if (wishlist.length === 0) {
+                    grid.style.display = 'none';
+                    empty.style.display = 'flex';
+                } else {
+                    grid.style.display = '';
+                    empty.style.display = 'none';
+                }
+            }
+
+            function updateCount() {
+                if (countBadge) {
+                    countBadge.textContent = wishlist.length;
+                    countBadge.style.display = wishlist.length > 0 ? 'inline' : 'none';
+                }
+            }
+
+            async function fetchProducts() {
+                if (window.location.protocol.startsWith('http')) {
+                    try {
+                        const res = await fetch('/api/products');
+                        if (res.ok) return await res.json();
+                    } catch {}
+                }
+                return JSON.parse(localStorage.getItem('dhgatevault_products') || '[]');
+            }
+
+            async function renderWishlist() {
+                const products = await fetchProducts();
+                const saved = products.filter(p => wishlist.includes(p.id));
+                grid.innerHTML = saved.map(p => `
+                    <div class="product-card">
+                        <div class="product-card__image-wrap">
+                            <img class="product-card__main-img" src="${p.thumbnailUrl}" alt="${p.title}"
+                                 onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22300%22><rect fill=%22%231a1a2e%22 width=%22300%22 height=%22300%22/><text fill=%22%23666%22 x=%2250%25%22 y=%2250%25%22 dy=%22.3em%22>Image</text></svg>'">
+                            <div class="product-card__dhgate-badge"><i class="bi bi-diamond-fill"></i> DHGate</div>
+                            <button class="product-card__wishlist-btn active" onclick="removeFromWishlist('${p.id}')">
+                                <i class="bi bi-heart-fill"></i>
+                            </button>
+                        </div>
+                        <div class="product-card__body">
+                            <div class="product-card__title">${p.title}</div>
+                            <div class="product-card__meta">
+                                <span class="product-card__price" data-usd-price="${parseFloat(p.price).toFixed(2)}">$${parseFloat(p.price).toFixed(2)}</span>
+                                <span style="color:var(--warning);"><i class="bi bi-star-fill"></i> ${p.rating || 4.5}</span>
+                            </div>
+                            <div class="product-card__actions">
+                                <a href="${p.affiliateLink}" class="product-card__affiliate-btn" target="_blank" rel="sponsored">
+                                    <i class="bi bi-cart-fill"></i> Shop Now
+                                </a>
+                                <button class="product-card__copy-btn" onclick="navigator.clipboard.writeText('${p.affiliateLink}')">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+                convertPrices();
+            }
+
+            window.removeFromWishlist = function(productId) {
+                const idx = wishlist.indexOf(productId);
+                if (idx !== -1) wishlist.splice(idx, 1);
+                localStorage.setItem('dhgatevault_wishlist', JSON.stringify(wishlist));
+                updateEmptyState();
+                updateCount();
+                renderWishlist();
+            };
+
+            // Initialise everything
+            (async function init() {
+                updateEmptyState();
+                updateCount();
+                await renderWishlist();
+                initCurrency();
+            })();
+        })();
+    </script>
+</body>
+</html>

@@ -24,14 +24,44 @@
             <a href="/" class="nav__logo">
                 <i class="bi bi-shield-lock-fill nav__logo-icon"></i> DHGateVault
             </a>
-            <div class="nav__right">
-                <div class="nav__links">
-                    <a href="/disclaimer">Disclaimer</a>
-                    <a href="/privacy">Privacy</a>
-                </div>
-                <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme">
-                    <i class="bi bi-sun-fill"></i>
+        <div class="nav__right">
+            <div class="nav__links">
+                <a href="/disclaimer" class="nav__pill">
+                    <i class="bi bi-file-earmark-text"></i> Disclaimer
+                </a>
+                <a href="/privacy" class="nav__pill">
+                    <i class="bi bi-shield-check"></i> Privacy
+                </a>
+            </div>
+
+            <!-- Currency dropdown (if not already present) -->
+            <div class="currency-dropdown" id="currencyDropdown">
+                <button class="currency-dropdown__trigger" type="button">
+                    <span id="currencyDisplay">USD $</span>
+                    <i class="bi bi-chevron-down currency-dropdown__icon"></i>
                 </button>
+                <div class="currency-dropdown__menu" id="currencyMenu">
+                    <button class="currency-option" data-currency="USD">USD $</button>
+                    <button class="currency-option" data-currency="GBP">GBP £</button>
+                    <button class="currency-option" data-currency="EUR">EUR €</button>
+                    <button class="currency-option" data-currency="CAD">CAD $</button>
+                    <button class="currency-option" data-currency="AUD">AUD $</button>
+                    <button class="currency-option" data-currency="JPY">JPY ¥</button>
+                    <button class="currency-option" data-currency="CNY">CNY ¥</button>
+                </div>
+            </div>
+
+            <!-- Wishlist heart -->
+            <a href="/wishlist" class="nav__wishlist" title="Wishlist">
+                <i class="bi bi-heart"></i>
+                <span class="wishlist-count" id="wishlistCount" style="display:none;">0</span>
+            </a>
+
+            <!-- Theme toggle -->
+            <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme">
+                <i class="bi bi-sun-fill"></i>
+            </button>
+        </div>
             </div>
         </div>
     </nav>
@@ -39,9 +69,10 @@
     <main class="app-container" id="mainContent">
         <section class="hero">
             <div class="hero__badge"><i class="bi bi-fire"></i>Male Fashion Reps Community</div>
-            <h1 class="hero__title">Unlock the Best<br><span class="gradient-text">DHGate Grails</span></h1>
+            <h1 class="hero__title">
+            <span class="gradient-text">Unlock the Best<br>DHGate Grails</span></h1>
             <p class="hero__desc">Hand‑tested, real‑photo reviews of the best men’s reps.</p>
-            <p class="hero__trust"><i class="bi bi-patch-check-fill"></i>A trustable player in the male fashion-reps community</p>
+            <p class="hero__trust"><i class="bi bi-patch-check-fill"></i>Community tested and verified</p>
             <p class="hero__disclosure"><i class="bi bi-info-circle"></i> We may earn a commission on purchases. <a href="/disclaimer" style="color:var(--accent-3);">Learn more</a></p>
         </section>
 

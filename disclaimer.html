@@ -21,9 +21,21 @@
             </a>
             <div class="nav__right">
                 <div class="nav__links">
-                    <a href="/disclaimer">Disclaimer</a>
-                    <a href="/privacy">Privacy</a>
+                    <a href="/disclaimer" class="nav__pill">
+                        <i class="bi bi-file-earmark-text"></i> Disclaimer
+                    </a>
+                    <a href="/privacy" class="nav__pill">
+                        <i class="bi bi-shield-check"></i> Privacy
+                    </a>
                 </div>
+
+                <!-- Wishlist heart -->
+                <a href="wishlist.html" class="nav__wishlist" title="Wishlist">
+                    <i class="bi bi-heart"></i>
+                    <span class="wishlist-count" id="wishlistCount" style="display:none;">0</span>
+                </a>
+
+                <!-- Theme toggle -->
                 <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme">
                     <i class="bi bi-sun-fill"></i>
                 </button>
@@ -67,6 +79,7 @@
                 <h4>Legal</h4>
                 <a href="/disclaimer">Disclaimer</a>
                 <a href="/privacy">Privacy Policy</a>
+                <a href="/wishlist" class="nav__wishlist"><i class="bi bi-heart-fill"></i> Wishlist</a>
                 <a href="#">Contact</a>
             </div>
             <div class="footer__col footer__social">
@@ -132,6 +145,41 @@
             glow.style.top  = e.clientY + 'px';
         });
     }
+    // Theme toggle
+    (function() {
+        const themeToggle = document.getElementById('themeToggle');
+        const themeIcon = themeToggle?.querySelector('i');
+        function setTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('dhgatevault_theme', theme);
+            if (themeIcon) themeIcon.className = theme === 'light' ? 'bi bi-moon-fill' : 'bi bi-sun-fill';
+        }
+        const savedTheme = localStorage.getItem('dhgatevault_theme') || 'dark';
+        setTheme(savedTheme);
+        themeToggle?.addEventListener('click', () => {
+            const current = document.documentElement.getAttribute('data-theme') || 'dark';
+            setTheme(current === 'dark' ? 'light' : 'dark');
+        });
+    })();
+
+    // Currency dropdown
+    (function() {
+        const dropdown = document.getElementById('currencyDropdown');
+        const trigger = dropdown?.querySelector('.currency-dropdown__trigger');
+        const menu = document.getElementById('currencyMenu');
+        trigger?.addEventListener('click', () => dropdown.classList.toggle('open'));
+        document.addEventListener('click', (e) => {
+            if (!dropdown?.contains(e.target)) dropdown?.classList.remove('open');
+        });
+        menu?.addEventListener('click', async (e) => {
+            const option = e.target.closest('.currency-option');
+            if (!option) return;
+            const selected = option.dataset.currency;
+            document.cookie = `preferred_currency=${selected};max-age=31536000;path=/`;
+            document.getElementById('currencyDisplay').textContent = option.textContent;
+            dropdown.classList.remove('open');
+        });
+    })();
 </script>
 </body>
 </html>

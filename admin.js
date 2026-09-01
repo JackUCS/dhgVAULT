@@ -1,17 +1,24 @@
-(function() {
+document.addEventListener('DOMContentLoaded', function() {
     const STORAGE_PRODUCTS = 'dhgatevault_products';
     const STORAGE_ANALYTICS = 'dhgatevault_analytics';
     const STORAGE_VIEWS = 'dhgatevault_pageviews';
     const STORAGE_VAULT_CREDS = 'dhgatevault_vault_creds';
-    const ADMIN_PASS_HASH = 'bc98688806fc3aabdbcc24666fb9563c1b6b3d7c324903e8e5f2601b228fcd49'; // your hash
+    const STORAGE_EVENTS = 'dhgatevault_events';
+
+    const ADMIN_USERNAME = 'EncryptedID';
+    const ADMIN_PASS_HASH = '790ca82fe39898705aa8d1a53fda65a0480b649f6d841f4d0ebaa711e979c9ea';
 
     const $toast = document.getElementById('toastContainer');
     let isUnlocked = false;
-    let editingId = null;          // track which product is being edited
+    let editingId = null;
 
     function showToast(msg) {
-        const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
-        $toast.appendChild(t); setTimeout(() => t.remove(), 3000);
+        if (!$toast) return;
+        const t = document.createElement('div');
+        t.className = 'toast';
+        t.textContent = msg;
+        $toast.appendChild(t);
+        setTimeout(() => t.remove(), 3000);
     }
 
     async function hashPassword(pw) {
@@ -24,71 +31,64 @@
         isUnlocked = !locked;
         const inputs = document.querySelectorAll('#addProductForm input, #addProductForm select, #addProductForm textarea, #addProductForm button[type="submit"], #btnSaveVaultCreds, #btnResetAnalytics, .btn--danger');
         inputs.forEach(el => el.disabled = locked);
-        document.getElementById('adminLockOverlay').style.display = locked ? 'flex' : 'none';
-        if (!locked) loadData();  // re-render table to enable/disable buttons
+        const overlay = document.getElementById('adminLockOverlay');
+        if (overlay) overlay.style.display = locked ? 'flex' : 'none';
+        if (!locked) loadData();
     }
 
     async function attemptUnlock() {
-        const pw = document.getElementById('adminUnlockPassword').value;
-        if (!pw) return;
+        const userInput = document.getElementById('adminUnlockUsername');
+        const passInput = document.getElementById('adminUnlockPassword');
+        const errorMsg = document.getElementById('unlockError');
+
+        if (!userInput || !passInput) {
+            console.error('Missing username or password input');
+            return;
+        }
+
+        const user = userInput.value.trim();
+        const pw = passInput.value;
+        if (!user || !pw) return;
+
+        if (user !== ADMIN_USERNAME) {
+            if (errorMsg) errorMsg.style.display = 'block';
+            return;
+        }
+
         const hash = await hashPassword(pw);
         if (hash === ADMIN_PASS_HASH) {
             setLocked(false);
-            document.getElementById('unlockError').style.display = 'none';
-            document.getElementById('adminUnlockPassword').value = '';
+            if (errorMsg) errorMsg.style.display = 'none';
+            userInput.value = '';
+            passInput.value = '';
         } else {
-            document.getElementById('unlockError').style.display = 'block';
+            if (errorMsg) errorMsg.style.display = 'block';
         }
     }
 
-    // DELETE PRODUCT
-    window.deleteProduct = function(id) {
-        if (!isUnlocked) return showToast('🔒 Unlock admin first');
-        if (!confirm('Delete this product?')) return;
-        const products = getProducts().filter(p => p.id !== id);
-        localStorage.setItem(STORAGE_PRODUCTS, JSON.stringify(products));
-        const analytics = getAnalytics(); delete analytics[id];
-        localStorage.setItem(STORAGE_ANALYTICS, JSON.stringify(analytics));
-        loadData();
-        showToast('🗑️ Product deleted');
-    };
-
-    // EDIT PRODUCT – populate form
-    window.editProduct = function(id) {
-        if (!isUnlocked) return showToast('🔒 Unlock admin first');
-        const product = getProducts().find(p => p.id === id);
-        if (!product) return;
-        editingId = id;
-        document.getElementById('inputDhgateLink').value = product.dhgateLink || '';
-        document.getElementById('inputThumbnailUrl').value = product.thumbnailUrl || '';
-        document.getElementById('inputTitle').value = product.title || '';
-        document.getElementById('inputPrice').value = product.price || '';
-        document.getElementById('inputAffiliateLink').value = product.affiliateLink || '';
-        document.getElementById('inputCategory').value = product.category || 'shirts';
-        document.getElementById('inputRating').value = product.rating || 4.5;
-        document.getElementById('reviewPreviews').innerHTML = (product.reviewImages || []).map(img => `<img src="${img}" alt="review">`).join('');
-        // Change button text
-        const submitBtn = document.querySelector('#addProductForm button[type="submit"]');
-        submitBtn.innerHTML = '<i class="bi bi-pencil-square"></i> Update Product';
-        // Open the collapsible if closed
-        const collapsible = document.querySelector('.collapsible');
-        if (collapsible && !collapsible.classList.contains('collapsible--open')) {
-            collapsible.querySelector('.collapsible__trigger').click();
-        }
-        window.scrollTo({ top: document.getElementById('addProductForm').offsetTop - 100, behavior: 'smooth' });
-    };
-
     function init() {
-        document.getElementById('btnLogout').addEventListener('click', () => window.location.href = 'index.html');
-        document.getElementById('btnUnlockAdmin').addEventListener('click', attemptUnlock);
-        document.getElementById('adminUnlockPassword').addEventListener('keypress', e => { if (e.key === 'Enter') attemptUnlock(); });
+        const btnLogout = document.getElementById('btnLogout');
+        const btnUnlock = document.getElementById('btnUnlockAdmin');
+        const usernameInput = document.getElementById('adminUnlockUsername');
+        const passwordInput = document.getElementById('adminUnlockPassword');
+        const addForm = document.getElementById('addProductForm');
+        const btnSaveVault = document.getElementById('btnSaveVaultCreds');
+        const btnResetAnalytics = document.getElementById('btnResetAnalytics');
+        const inputDhgateLink = document.getElementById('inputDhgateLink');
+        const inputReviewPhotos = document.getElementById('inputReviewPhotos');
+
+        if (btnLogout) btnLogout.addEventListener('click', () => window.location.href = 'index.html');
+        if (btnUnlock) btnUnlock.addEventListener('click', attemptUnlock);
+        if (usernameInput) usernameInput.addEventListener('keypress', e => { if (e.key === 'Enter') passwordInput?.focus(); });
+        if (passwordInput) passwordInput.addEventListener('keypress', e => { if (e.key === 'Enter') attemptUnlock(); });
 
         loadData();
-        document.getElementById('addProductForm').addEventListener('submit', handleAddProduct);
-        document.getElementById('btnSaveVaultCreds').addEventListener('click', saveVaultCreds);
-        document.getElementById('btnResetAnalytics').addEventListener('click', resetAnalytics);
-        document.getElementById('inputDhgateLink').addEventListener('blur', autoFillPrice);
-        document.getElementById('inputReviewPhotos').addEventListener('change', previewImages);
+
+        if (addForm) addForm.addEventListener('submit', handleAddProduct);
+        if (btnSaveVault) btnSaveVault.addEventListener('click', saveVaultCreds);
+        if (btnResetAnalytics) btnResetAnalytics.addEventListener('click', resetAnalytics);
+        if (inputDhgateLink) inputDhgateLink.addEventListener('blur', autoFillPrice);
+        if (inputReviewPhotos) inputReviewPhotos.addEventListener('change', previewImages);
 
         document.querySelectorAll('.collapsible__trigger').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -102,47 +102,117 @@
         setLocked(true);
     }
 
-    function getProducts() { return JSON.parse(localStorage.getItem(STORAGE_PRODUCTS) || '[]'); }
-    function getAnalytics() { return JSON.parse(localStorage.getItem(STORAGE_ANALYTICS) || '{}'); }
-    function getViews() { return parseInt(localStorage.getItem(STORAGE_VIEWS)) || 0; }
+    // ---------- SERVER-SYNCED PRODUCTS ----------
+    async function getProducts() {
+        if (window.location.protocol.startsWith('http')) {
+            try {
+                const res = await fetch('/api/products');
+                if (res.ok) return await res.json();
+            } catch (e) {
+                console.warn('Server product fetch failed, falling back to local');
+            }
+        }
+        return JSON.parse(localStorage.getItem(STORAGE_PRODUCTS) || '[]');
+    }
 
-    function loadData() {
-        const products = getProducts();
-        const analytics = getAnalytics();
+    async function upsertProductToServer(product) {
+        if (window.location.protocol.startsWith('http')) {
+            try {
+                const res = await fetch('/api/products', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(product)
+                });
+                return res.ok;
+            } catch (e) {
+                console.warn('Server upsert failed:', e);
+            }
+        }
+        return false;
+    }
+
+    async function deleteProductFromServer(id) {
+        if (window.location.protocol.startsWith('http')) {
+            try {
+                const res = await fetch(`/api/products/${id}`, { method: 'DELETE' });
+                return res.ok;
+            } catch (e) {
+                console.warn('Server delete failed:', e);
+            }
+        }
+        return false;
+    }
+
+    // ---------- ANALYTICS ----------
+async function getEvents() {
+    if (window.location.protocol.startsWith('http')) {
+        try {
+            const res = await fetch('/api/events');
+            if (res.ok) return await res.json();
+        } catch (e) {
+            console.warn('Server events fetch failed');
+        }
+    }
+    return [];   // no local fallback; server is the source of truth
+}
+
+    function calculateMetrics(events) {
+        const clickMap = {};
+        const viewMap = {};
+        events.forEach(ev => {
+            if (ev.type === 'click') clickMap[ev.productId] = (clickMap[ev.productId] || 0) + 1;
+            else if (ev.type === 'image_view') viewMap[ev.productId] = (viewMap[ev.productId] || 0) + 1;
+        });
+        return { clickMap, viewMap };
+    }
+
+    async function loadData() {
+        const products = await getProducts();
+        const events = await getEvents();
+        const { clickMap, viewMap } = calculateMetrics(events);
+
         document.getElementById('adminTotalProducts').textContent = products.length;
-        document.getElementById('adminTotalClicks').textContent = Object.values(analytics).reduce((s, a) => s + (a.clicks || 0), 0);
-        document.getElementById('adminTotalViews').textContent = getViews();
+        document.getElementById('adminTotalClicks').textContent = Object.values(clickMap).reduce((s, c) => s + c, 0);
+        document.getElementById('adminTotalViews').textContent = Object.values(viewMap).reduce((s, c) => s + c, 0);
+
         let top = '—', topC = 0;
-        products.forEach(p => { const c = (analytics[p.id]?.clicks || 0); if (c > topC) { topC = c; top = p.title.substr(0, 25); } });
+        products.forEach(p => {
+            const c = clickMap[p.id] || 0;
+            if (c > topC) { topC = c; top = p.title.substr(0, 25); }
+        });
         document.getElementById('adminTopProduct').textContent = top;
-        renderBarChart(products, analytics);
-        renderTable(products, analytics);
+
+        renderBarChart(products, clickMap);
+        renderTable(products, clickMap, viewMap);
+
         const creds = JSON.parse(localStorage.getItem(STORAGE_VAULT_CREDS) || '{}');
         if (creds.username) document.getElementById('vaultUsernameInput').value = creds.username;
     }
 
-    function renderBarChart(products, analytics) {
+    function renderBarChart(products, clickMap) {
         const chart = document.getElementById('barChart');
+        if (!chart) return;
         chart.innerHTML = '';
         const tooltip = document.getElementById('chartTooltip');
-        const max = Math.max(1, ...products.map(p => analytics[p.id]?.clicks || 0));
+        const max = Math.max(1, ...products.map(p => clickMap[p.id] || 0));
         products.slice(0, 12).forEach(p => {
-            const clicks = analytics[p.id]?.clicks || 0;
+            const clicks = clickMap[p.id] || 0;
             const bar = document.createElement('div');
             bar.className = 'bar-chart__bar';
-            // Minimum height of 8px, maximum 110px
             const calculatedHeight = Math.max(8, (clicks / max) * 110);
             bar.style.height = calculatedHeight + 'px';
             bar.setAttribute('data-clicks', clicks);
             bar.setAttribute('data-title', p.title);
             bar.addEventListener('mouseenter', () => {
-                tooltip.textContent = `${p.title}: ${clicks} clicks`;
-                tooltip.style.display = 'block';
-                const rect = bar.getBoundingClientRect();
-                tooltip.style.left = rect.left + rect.width / 2 + 'px';
-                tooltip.style.top = rect.top - 30 + 'px';
+                if (tooltip) {
+                    tooltip.textContent = `${p.title}: ${clicks} clicks`;
+                    tooltip.style.display = 'block';
+                    const rect = bar.getBoundingClientRect();
+                    tooltip.style.left = rect.left + rect.width / 2 + 'px';
+                    tooltip.style.top = rect.top - 30 + 'px';
+                }
             });
-            bar.addEventListener('mouseleave', () => tooltip.style.display = 'none');
+            bar.addEventListener('mouseleave', () => { if (tooltip) tooltip.style.display = 'none'; });
             const label = document.createElement('div');
             label.className = 'bar-chart__label';
             label.textContent = p.title.substr(0, 8);
@@ -154,18 +224,22 @@
         });
     }
 
-    function renderTable(products, analytics) {
-        const tbody = document.getElementById('adminTableBody'); tbody.innerHTML = '';
-        const sorted = [...products].sort((a, b) => (analytics[b.id]?.clicks || 0) - (analytics[a.id]?.clicks || 0));
+    function renderTable(products, clickMap, viewMap) {
+        const tbody = document.getElementById('adminTableBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        const sorted = [...products].sort((a, b) => (clickMap[b.id] || 0) - (clickMap[a.id] || 0));
         sorted.forEach(p => {
-            const clicks = analytics[p.id]?.clicks || 0,
-                last = analytics[p.id]?.lastClicked ? new Date(analytics[p.id].lastClicked).toLocaleDateString() : 'Never';
+            const clicks = clickMap[p.id] || 0;
+            const views = viewMap[p.id] || 0;
+            const last = '—';
             const priority = clicks >= 10 ? '🔥 High' : clicks >= 4 ? '⭐ Medium' : 'Low';
             const disabledAttr = isUnlocked ? '' : 'disabled';
             tbody.innerHTML += `<tr>
                 <td>${p.title.substr(0, 30)}</td>
                 <td>${p.category}</td>
                 <td>${clicks}</td>
+                <td>${views}</td>
                 <td>${last}</td>
                 <td>${priority}</td>
                 <td>
@@ -179,7 +253,7 @@
     async function handleAddProduct(e) {
         e.preventDefault();
         if (!isUnlocked) return;
-        const files = document.getElementById('inputReviewPhotos').files;
+        const files = document.getElementById('inputReviewPhotos')?.files || [];
         const reviewImages = [];
         for (let f of files) {
             const b64 = await new Promise(r => { const rd = new FileReader(); rd.onload = () => r(rd.result); rd.readAsDataURL(f); });
@@ -197,37 +271,50 @@
             createdAt: new Date().toISOString()
         };
 
-        const products = getProducts();
+        const product = { id: editingId || 'prod_' + Date.now(), ...productData };
+
+        // Send to server (full product with images)
+        await upsertProductToServer(product);
+
+        // Update local cache WITHOUT reviewImages to avoid quota
+        const localProduct = { ...product };
+        delete localProduct.reviewImages;
+
+        try {
+            let products = JSON.parse(localStorage.getItem(STORAGE_PRODUCTS) || '[]');
+            const idx = products.findIndex(p => p.id === localProduct.id);
+            if (idx >= 0) products[idx] = localProduct;
+            else products.unshift(localProduct);
+            localStorage.setItem(STORAGE_PRODUCTS, JSON.stringify(products));
+        } catch (err) {
+            console.warn('Local product cache skipped (quota?)');
+        }
+
         if (editingId) {
-            const index = products.findIndex(p => p.id === editingId);
-            if (index !== -1) {
-                const oldImages = products[index].reviewImages || [];
-                products[index] = { ...products[index], ...productData, reviewImages: productData.reviewImages || oldImages, id: editingId };
-                showToast('✅ Product updated!');
-            }
+            showToast('✅ Product updated!');
             editingId = null;
             document.querySelector('#addProductForm button[type="submit"]').innerHTML = '<i class="bi bi-cloud-upload"></i> Add Product';
         } else {
-            const newProduct = { id: 'prod_' + Date.now(), ...productData };
-            products.unshift(newProduct);
             showToast('✅ Product added!');
         }
-        localStorage.setItem(STORAGE_PRODUCTS, JSON.stringify(products));
-        loadData();
+
+        await loadData();
         e.target.reset();
         document.getElementById('reviewPreviews').innerHTML = '';
     }
 
     function autoFillPrice() {
-        const link = document.getElementById('inputDhgateLink').value;
+        const link = document.getElementById('inputDhgateLink')?.value;
         const priceInput = document.getElementById('inputPrice');
-        if (!link || priceInput.value) return;
+        if (!link || priceInput?.value) return;
         let h = 0; for (let i = 0; i < link.length; i++) h = ((h << 5) - h) + link.charCodeAt(i);
         priceInput.value = ((Math.abs(h) % 10500) / 100 + 15).toFixed(2);
     }
 
     function previewImages() {
-        const container = document.getElementById('reviewPreviews'); container.innerHTML = '';
+        const container = document.getElementById('reviewPreviews');
+        if (!container) return;
+        container.innerHTML = '';
         for (let f of this.files) {
             const r = new FileReader();
             r.onload = e => { const img = document.createElement('img'); img.src = e.target.result; container.appendChild(img); };
@@ -237,8 +324,8 @@
 
     function saveVaultCreds() {
         if (!isUnlocked) return;
-        const u = document.getElementById('vaultUsernameInput').value.trim();
-        const p = document.getElementById('vaultPasswordInput').value;
+        const u = document.getElementById('vaultUsernameInput')?.value.trim();
+        const p = document.getElementById('vaultPasswordInput')?.value;
         if (!u || !p) return showToast('Enter both.');
         hashPassword(p).then(hash => {
             localStorage.setItem(STORAGE_VAULT_CREDS, JSON.stringify({ username: u, passwordHash: hash }));
@@ -250,10 +337,51 @@
         if (!isUnlocked) return;
         if (confirm('Reset all analytics?')) {
             localStorage.removeItem(STORAGE_ANALYTICS);
+            localStorage.removeItem(STORAGE_EVENTS);
             loadData();
             showToast('Analytics reset.');
         }
     }
 
+    // ---------- DELETE PRODUCT (server-synced) ----------
+    window.deleteProduct = async function(id) {
+        if (!isUnlocked) return showToast('🔒 Unlock admin first');
+        if (!confirm('Delete this product?')) return;
+
+        await deleteProductFromServer(id);
+
+        // Update local cache
+        let products = JSON.parse(localStorage.getItem(STORAGE_PRODUCTS) || '[]');
+        products = products.filter(p => p.id !== id);
+        localStorage.setItem(STORAGE_PRODUCTS, JSON.stringify(products));
+
+        await loadData();
+        showToast('🗑️ Product deleted');
+    };
+
+    // ---------- EDIT PRODUCT (async, uses server data) ----------
+    window.editProduct = async function(id) {
+        if (!isUnlocked) return showToast('🔒 Unlock admin first');
+        const products = await getProducts();
+        const product = products.find(p => p.id === id);
+        if (!product) return showToast('Product not found');
+        editingId = id;
+        document.getElementById('inputDhgateLink').value = product.dhgateLink || '';
+        document.getElementById('inputThumbnailUrl').value = product.thumbnailUrl || '';
+        document.getElementById('inputTitle').value = product.title || '';
+        document.getElementById('inputPrice').value = product.price || '';
+        document.getElementById('inputAffiliateLink').value = product.affiliateLink || '';
+        document.getElementById('inputCategory').value = product.category || 'shirts';
+        document.getElementById('inputRating').value = product.rating || 4.5;
+        document.getElementById('reviewPreviews').innerHTML = (product.reviewImages || []).map(img => `<img src="${img}" alt="review">`).join('');
+        const submitBtn = document.querySelector('#addProductForm button[type="submit"]');
+        submitBtn.innerHTML = '<i class="bi bi-pencil-square"></i> Update Product';
+        const collapsible = document.querySelector('.collapsible');
+        if (collapsible && !collapsible.classList.contains('collapsible--open')) {
+            collapsible.querySelector('.collapsible__trigger').click();
+        }
+        window.scrollTo({ top: document.getElementById('addProductForm').offsetTop - 100, behavior: 'smooth' });
+    };
+
     init();
-})();
+});
