@@ -1594,3 +1594,40 @@ body {
         filter: drop-shadow(0 0 20px rgba(255, 45, 120, 0.9));
     }
 }
+
+/* ===========================
+   WISHLIST PAGE – CENTERING FIX
+   =========================== */
+.wishlist-title {
+    text-align: center;
+    justify-content: center;
+    width: 100%;
+}
+
+#emptyWishlist {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 80px 20px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+#emptyWishlist .bi {
+    display: block;
+    margin-bottom: 16px;
+}
+
+/* If the grid itself isn't centered, ensure its container is */
+.app-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.products-grid {
+    width: 100%;
+    max-width: var(--max-width);
+}
