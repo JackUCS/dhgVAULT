@@ -24,44 +24,43 @@
             <a href="/" class="nav__logo">
                 <i class="bi bi-shield-lock-fill nav__logo-icon"></i> DHGateVault
             </a>
-        <div class="nav__right">
-            <div class="nav__links">
-                <a href="/disclaimer" class="nav__pill">
-                    <i class="bi bi-file-earmark-text"></i> Disclaimer
-                </a>
-                <a href="/privacy" class="nav__pill">
-                    <i class="bi bi-shield-check"></i> Privacy
-                </a>
-            </div>
-
-            <!-- Currency dropdown (if not already present) -->
-            <div class="currency-dropdown" id="currencyDropdown">
-                <button class="currency-dropdown__trigger" type="button">
-                    <span id="currencyDisplay">USD $</span>
-                    <i class="bi bi-chevron-down currency-dropdown__icon"></i>
-                </button>
-                <div class="currency-dropdown__menu" id="currencyMenu">
-                    <button class="currency-option" data-currency="USD">USD $</button>
-                    <button class="currency-option" data-currency="GBP">GBP £</button>
-                    <button class="currency-option" data-currency="EUR">EUR €</button>
-                    <button class="currency-option" data-currency="CAD">CAD $</button>
-                    <button class="currency-option" data-currency="AUD">AUD $</button>
-                    <button class="currency-option" data-currency="JPY">JPY ¥</button>
-                    <button class="currency-option" data-currency="CNY">CNY ¥</button>
+            <div class="nav__right">
+                <div class="nav__links">
+                    <a href="/disclaimer" class="nav__pill">
+                        <i class="bi bi-file-earmark-text"></i> Disclaimer
+                    </a>
+                    <a href="/privacy" class="nav__pill">
+                        <i class="bi bi-shield-check"></i> Privacy
+                    </a>
                 </div>
-            </div>
 
-            <!-- Wishlist heart -->
-            <a href="/wishlist" class="nav__wishlist" title="Wishlist">
-                <i class="bi bi-heart"></i>
-                <span class="wishlist-count" id="wishlistCount" style="display:none;">0</span>
-            </a>
+                <!-- Currency dropdown -->
+                <div class="currency-dropdown" id="currencyDropdown">
+                    <button class="currency-dropdown__trigger" type="button">
+                        <span id="currencyDisplay">USD $</span>
+                        <i class="bi bi-chevron-down currency-dropdown__icon"></i>
+                    </button>
+                    <div class="currency-dropdown__menu" id="currencyMenu">
+                        <button class="currency-option" data-currency="USD">USD $</button>
+                        <button class="currency-option" data-currency="GBP">GBP £</button>
+                        <button class="currency-option" data-currency="EUR">EUR €</button>
+                        <button class="currency-option" data-currency="CAD">CAD $</button>
+                        <button class="currency-option" data-currency="AUD">AUD $</button>
+                        <button class="currency-option" data-currency="JPY">JPY ¥</button>
+                        <button class="currency-option" data-currency="CNY">CNY ¥</button>
+                    </div>
+                </div>
 
-            <!-- Theme toggle -->
-            <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme">
-                <i class="bi bi-sun-fill"></i>
-            </button>
-        </div>
+                <!-- Wishlist heart -->
+                <a href="/wishlist" class="nav__wishlist" title="Wishlist">
+                    <i class="bi bi-heart"></i>
+                    <span class="wishlist-count" id="wishlistCount" style="display:none;">0</span>
+                </a>
+
+                <!-- Theme toggle -->
+                <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme">
+                    <i class="bi bi-sun-fill"></i>
+                </button>
             </div>
         </div>
     </nav>
@@ -70,28 +69,44 @@
         <section class="hero">
             <div class="hero__badge"><i class="bi bi-fire"></i>Male Fashion Reps Community</div>
             <h1 class="hero__title">
-            <span class="gradient-text">Unlock the Best<br>DHGate Grails</span></h1>
+                <span class="gradient-text">Unlock the Best<br>DHGate Grails</span>
+            </h1>
             <p class="hero__desc">Hand‑tested, real‑photo reviews of the best men’s reps.</p>
-            <p class="hero__trust"><i class="bi bi-patch-check-fill"></i>Community tested and verified</p>
+            <p class="hero__trust"><i class="bi bi-patch-check-fill"></i>Community tested and verified, only the best</p>
             <p class="hero__disclosure"><i class="bi bi-info-circle"></i> We may earn a commission on purchases. <a href="/disclaimer" style="color:var(--accent-3);">Learn more</a></p>
         </section>
 
         <div class="filters" id="filtersContainer">
-            <button class="filter-pill filter-pill--active" data-category="all">All</button>
-            <button class="filter-pill" data-category="shirts">Shirts</button>
-            <button class="filter-pill" data-category="pants">Pants</button>
-            <button class="filter-pill" data-category="joggers">Joggers</button>
-            <button class="filter-pill" data-category="shoes">Shoes</button>
-            <button class="filter-pill" data-category="slides">Slides</button>
-            <button class="filter-pill" data-category="chains">Chains</button>
-            <button class="filter-pill" data-category="accessories">Accessories</button>
+            <div class="filter-row">
+                <button class="filter-pill filter-pill--active" data-category="all">All</button>
+                <button class="filter-pill" data-category="shirts">Shirts</button>
+                <button class="filter-pill" data-category="pants">Pants</button>
+                <button class="filter-pill" data-category="joggers">Joggers</button>
+            </div>
+            <div class="filter-row">
+                <button class="filter-pill" data-category="shoes">Shoes</button>
+                <button class="filter-pill" data-category="slides">Slides</button>
+                <button class="filter-pill" data-category="chains">Chains</button>
+            </div>
+            <div class="filter-row">
+                <button class="filter-pill" data-category="accessories">Accessories</button>
+            </div>
         </div>
 
-        <div class="products-grid" id="productsGrid"></div>
-        <div class="empty-state" id="emptyState" style="display:none;">
-            <div class="empty-state__icon"><i class="bi bi-bag-x"></i></div>
-            <h3>No fashion reps yet</h3>
-            <p>Check back soon for the best DHGate finds.</p>
+        <!-- Catalog layout with brand sidebar -->
+        <div class="catalog-layout">
+            <aside class="brand-sidebar" id="brandSidebar" style="display:none;">
+                <h3>Brands</h3>
+                <div id="brandList" class="brand-list"></div>
+            </aside>
+            <div class="catalog-main">
+                <div class="products-grid" id="productsGrid"></div>
+                <div class="empty-state" id="emptyState" style="display:none;">
+                    <div class="empty-state__icon"><i class="bi bi-bag-x"></i></div>
+                    <h3>No fashion reps yet</h3>
+                    <p>Check back soon for the best DHGate finds.</p>
+                </div>
+            </div>
         </div>
     </main>
 

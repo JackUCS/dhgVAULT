@@ -14,7 +14,7 @@
     <div class="grid-overlay"></div>
     <div class="toast-container" id="toastContainer"></div>
 
-    <!-- Lock overlay (now requires username + password) -->
+    <!-- Lock overlay -->
     <div id="adminLockOverlay" class="admin-lock">
         <div class="admin-lock__card">
             <h2><i class="bi bi-shield-lock-fill"></i> Admin Locked</h2>
@@ -176,6 +176,13 @@
             <section id="productTable" class="admin-section">
                 <h2 class="admin-section__title"><i class="bi bi-table"></i> Product Click Details</h2>
                 <div class="admin-card">
+                    <div class="product-filter-row">
+                        <label for="brandFilter" class="filter-label"><i class="bi bi-funnel"></i> Filter by Brand</label>
+                        <select id="brandFilter" class="form-group-input">
+                            <option value="all">All Brands</option>
+                            <!-- options populated by admin.js -->
+                        </select>
+                    </div>
                     <div class="admin-table-wrap">
                         <table class="admin-table" id="adminTable">
                             <thead>

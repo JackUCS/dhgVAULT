@@ -4,11 +4,18 @@
   "description": "DHGateVault affiliate site",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "build": "esbuild styles.css --minify --outfile=styles.min.css && esbuild script.js --minify --outfile=script.min.js && esbuild admin.js --minify --outfile=admin.min.js && esbuild wishlist.js --minify --outfile=wishlist.min.js"
   },
   "dependencies": {
+    "compression": "^1.8.1",
     "express": "^4.18.2",
     "express-basic-auth": "^1.2.1",
-    "request-ip": "^3.3.0"
+    "multer": "^2.0.0",
+    "request-ip": "^3.3.0",
+    "sharp": "^0.35.4"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
   }
 }

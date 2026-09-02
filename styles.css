@@ -1631,3 +1631,389 @@ body {
     width: 100%;
     max-width: var(--max-width);
 }
+
+
+/* ===========================
+   MOBILE NAV IMPROVEMENTS
+   =========================== */
+@media (max-width: 768px) {
+    .nav__inner {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        padding: 12px 16px;
+    }
+
+    .nav__logo {
+        justify-content: center;
+    }
+
+    .nav__right {
+        flex-direction: column;
+        gap: 10px;
+        width: 100%;
+    }
+
+    .nav__links {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        width: 100%;
+        gap: 8px;
+    }
+
+    .nav__pill {
+        font-size: 0.78rem;
+        padding: 5px 12px;
+    }
+
+    /* Keep currency, wishlist, and toggle in a row */
+    .nav__actions {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    /* If you don't have a .nav__actions wrapper, target individual elements */
+    .currency-dropdown,
+    .nav__wishlist,
+    .theme-toggle {
+        margin: 0;
+    }
+}
+
+/* ===========================
+   FINAL FIX – NAV FIXED ON MOBILE
+   =========================== */
+@media (max-width: 1024px) {
+    .nav {
+        position: fixed !important;
+        top: 16px !important;
+        left: 16px !important;
+        right: 16px !important;
+        width: auto !important;
+        margin: 0 !important;
+        z-index: 1000 !important;
+    }
+
+    .nav__inner {
+        border-radius: 18px !important;
+        background: var(--glass) !important;
+        backdrop-filter: blur(28px) saturate(200%) !important;
+        -webkit-backdrop-filter: blur(28px) saturate(200%) !important;
+        border: 1px solid var(--glass-border) !important;
+        box-shadow: var(--shadow-glass) !important;
+        padding: 10px 16px !important;
+    }
+
+    body {
+        padding-top: 240px !important;
+    }
+}
+
+/* ===========================
+   FINAL MOBILE NAV – COMPACT & FIXED
+   =========================== */
+@media (max-width: 768px) {
+    /* Fixed floating nav */
+    .nav {
+        position: fixed;
+        top: 8px;
+        left: 8px;
+        right: 8px;
+        width: auto;
+        margin: 0;
+        z-index: 1000;
+    }
+
+    /* Single row layout */
+    .nav__inner {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 16px;
+        background: var(--glass);
+        backdrop-filter: blur(28px) saturate(200%);
+        -webkit-backdrop-filter: blur(28px) saturate(200%);
+        border: 1px solid var(--glass-border);
+        box-shadow: var(--shadow-glass);
+    }
+
+    /* Hide legal links on mobile */
+    .nav__links {
+        display: none !important;
+    }
+
+    /* Logo – left side */
+    .nav__logo {
+        font-size: 1rem;
+        gap: 5px;
+        margin-right: auto;      /* pushes following items to the right */
+    }
+
+    .nav__logo-icon {
+        font-size: 1rem;
+    }
+
+    /* Theme toggle next to logo */
+    .theme-toggle {
+        width: 28px;
+        height: 28px;
+        font-size: 0.9rem;
+        margin: 0;
+    }
+
+    /* Right group: currency + wishlist */
+    .nav__right {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 8px;
+        margin-left: auto;
+        width: auto;
+        flex: 0 0 auto;
+    }
+
+    /* Compact currency dropdown */
+    .currency-dropdown__trigger {
+        padding: 4px 8px;
+        font-size: 0.75rem;
+        min-width: 60px;
+        border-radius: 12px;
+    }
+
+    .currency-dropdown__trigger span {
+        font-size: 0.7rem;
+    }
+
+    .currency-dropdown__icon {
+        font-size: 0.6rem;
+    }
+
+    /* Compact wishlist */
+    .nav__wishlist {
+        padding: 4px 8px;
+        font-size: 0.75rem;
+        border-radius: 12px;
+        gap: 4px;
+    }
+
+    .nav__wishlist i {
+        font-size: 0.9rem;
+    }
+
+    .wishlist-count {
+        font-size: 0.55rem;
+        padding: 1px 5px;
+        min-width: 16px;
+    }
+
+    /* Adjust body top padding so content isn't hidden */
+    body {
+        padding-top: 56px !important;   /* small enough, no huge gap */
+    }
+}
+
+.product-filter-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.filter-label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+#brandFilter {
+    background: var(--surface);
+    border: 1px solid var(--glass-border);
+    color: var(--text-primary);
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    font-family: var(--font);
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+/* ===========================
+   ADMIN REVIEW PREVIEWS – THUMBNAILS
+   =========================== */
+.review-previews {
+    display: flex !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+    margin-top: 8px !important;
+    max-height: 120px !important;
+    overflow-y: auto !important;
+}
+
+.review-previews img {
+    width: 60px !important;
+    height: 60px !important;
+    object-fit: cover !important;
+    border-radius: 8px !important;
+    border: 1px solid var(--glass-border) !important;
+    flex-shrink: 0 !important;
+    display: block !important;
+}
+
+/* ===========================
+   MOBILE NAV – PERFECT VERTICAL CENTERING
+   =========================== */
+@media (max-width: 768px) {
+    .nav__inner {
+        display: flex;
+        flex-direction: row;
+        align-items: center !important;       /* force vertical centering */
+        justify-content: flex-start;
+        gap: 8px;
+        padding: 8px 12px;
+    }
+
+    .nav__logo {
+        display: flex;
+        align-items: center;                  /* center logo icon + text */
+        line-height: 1;                       /* prevent extra height */
+        margin-right: auto;
+    }
+
+    .nav__logo-icon {
+        font-size: 1.2rem;                    /* match logo text size */
+        line-height: 1;
+    }
+
+    .nav__right {
+        display: flex;
+        align-items: center;                  /* center all right items */
+        gap: 8px;
+        margin-left: auto;
+    }
+
+    .theme-toggle,
+    .currency-dropdown,
+    .nav__wishlist {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 32px;                         /* fixed height for consistency */
+    }
+}
+/* ===========================
+   ULTRA SMALL SCREEN NAV (≤380px)
+   =========================== */
+@media (max-width: 380px) {
+    .nav {
+        top: 6px;
+        left: 6px;
+        right: 6px;
+    }
+
+    .nav__inner {
+        padding: 6px 8px;
+        gap: 6px;
+        border-radius: 12px;
+    }
+
+    .nav__logo {
+        font-size: 0.85rem;
+        gap: 4px;
+        margin-right: auto;
+    }
+
+    .nav__logo-icon {
+        font-size: 1rem;
+    }
+
+    /* Optionally hide the logo text on very small screens to save space */
+    .nav__logo span {
+        display: none;          /* keeps only the lock icon */
+    }
+
+    .theme-toggle {
+        width: 24px;
+        height: 24px;
+        font-size: 0.8rem;
+    }
+
+    .currency-dropdown__trigger {
+        padding: 3px 6px;
+        font-size: 0.65rem;
+        min-width: 50px;
+        border-radius: 10px;
+    }
+
+    .currency-dropdown__trigger span {
+        font-size: 0.6rem;
+    }
+
+    .currency-dropdown__icon {
+        font-size: 0.5rem;
+    }
+
+    .nav__wishlist {
+        padding: 3px 6px;
+        font-size: 0.65rem;
+        border-radius: 10px;
+        gap: 3px;
+    }
+
+    .nav__wishlist i {
+        font-size: 0.8rem;
+    }
+
+    .wishlist-count {
+        font-size: 0.5rem;
+        padding: 1px 4px;
+        min-width: 14px;
+    }
+
+    /* Adjust body padding for shorter nav */
+    body {
+        padding-top: 48px !important;
+    }
+}
+/* ===========================
+   FINAL MOBILE 2‑COLUMN CARDS
+   =========================== */
+@media (max-width: 768px) {
+    /* Two cards per row */
+    .products-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 10px !important;
+    }
+
+    /* Compact card content for smaller width */
+    .product-card__body {
+        padding: 8px 10px !important;
+    }
+    .product-card__title {
+        font-size: 0.8rem !important;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+    }
+    .product-card__price {
+        font-size: 0.9rem !important;
+    }
+    .product-card__affiliate-btn {
+        padding: 6px 8px !important;
+        font-size: 0.7rem !important;
+        gap: 3px !important;
+    }
+    .product-card__copy-btn {
+        padding: 6px 8px !important;
+        font-size: 0.7rem !important;
+    }
+    .product-card__review-thumb {
+        width: 32px !important;
+        height: 32px !important;
+    }
+}
