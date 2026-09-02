@@ -1085,19 +1085,31 @@ body {
     flex-direction:column;
     gap:8px;
 }
+/* ===========================
+   TOAST – ROBUST THEME COLORS
+   =========================== */
 .toast {
-    padding:12px 20px;
-    border-radius:var(--radius-sm);
-    background:var(--bg-secondary);
-    border:1px solid var(--glass-border);
-    color:#fff;
-    font-size:0.85rem;
-    animation:slideInRight 0.4s ease, fadeOut 0.4s ease 2.6s forwards;
-    box-shadow:0 8px 24px rgba(0,0,0,0.5);
-    backdrop-filter:blur(12px);
-    -webkit-backdrop-filter:blur(12px);
-    max-width:350px;
+    padding: 12px 20px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-secondary);
+    border: 1px solid var(--glass-border);
+    color: #fff;                       /* dark mode default */
+    font-size: 0.85rem;
+    animation: slideInRight 0.4s ease, fadeOut 0.4s ease 2.6s forwards;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    max-width: 350px;
 }
+
+/* Light mode – ensure dark text on light background */
+html[data-theme="light"] .toast {
+    color: #1f2035 !important;          /* dark indigo, matches theme */
+    background: #ffffff !important;
+    border-color: rgba(0, 0, 0, 0.1) !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
+}
+
 @keyframes slideInRight {
     from{ transform:translateX(120%); opacity:0; }
     to{ transform:translateX(0); opacity:1; }
@@ -2076,4 +2088,54 @@ body {
         border-color: rgba(129,140,248,0.5) !important;
         color: var(--accent) !important;
     }
+}
+
+/* ===========================
+   HERO BADGE – GLOW (FORCED)
+   =========================== */
+.hero__badge {
+    box-shadow:
+        0 0 20px rgba(129, 140, 248, 0.7),
+        0 0 40px rgba(56, 189, 248, 0.4) !important;
+    animation: badgeGlowPulse 2.8s ease-in-out infinite !important;
+}
+
+@keyframes badgeGlowPulse {
+    0%, 100% {
+        box-shadow:
+            0 0 15px rgba(129, 140, 248, 0.5),
+            0 0 30px rgba(56, 189, 248, 0.25);
+    }
+    50% {
+        box-shadow:
+            0 0 28px rgba(129, 140, 248, 0.9),
+            0 0 55px rgba(56, 189, 248, 0.6);
+    }
+}
+
+/* Light mode – pink glow */
+[data-theme="light"] .hero__badge {
+    box-shadow:
+        0 0 20px rgba(255, 45, 120, 0.7),
+        0 0 40px rgba(255, 45, 120, 0.4) !important;
+    animation: badgeGlowPulseLight 2.8s ease-in-out infinite !important;
+}
+
+@keyframes badgeGlowPulseLight {
+    0%, 100% {
+        box-shadow:
+            0 0 15px rgba(255, 45, 120, 0.5),
+            0 0 30px rgba(255, 45, 120, 0.25);
+    }
+    50% {
+        box-shadow:
+            0 0 28px rgba(255, 45, 120, 0.9),
+            0 0 55px rgba(255, 45, 120, 0.6);
+    }
+}
+
+.product-card__price {
+    min-width: 70px;              /* reserve space for common price lengths */
+    display: inline-block;
+    text-align: left;
 }

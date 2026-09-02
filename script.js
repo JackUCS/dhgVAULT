@@ -1,3 +1,27 @@
+// ---------- Cookie helpers (global) ----------
+function getCookie(name) {
+    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return match ? decodeURIComponent(match[2]) : null;
+}
+
+function setCookie(name, value, days = 365) {
+    const expires = new Date(Date.now() + days * 864e5).toUTCString();
+    document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
+}
+
+function hasConsent() {
+    return getCookie('cookie_consent') === 'accepted' || localStorage.getItem('cookie_consent') === 'true';
+}
+
+function getVisitorId() {
+    let id = getCookie('visitor_id');
+    if (!id) {
+        id = 'v_' + Math.random().toString(36).substr(2, 9);
+        setCookie('visitor_id', id, 365);
+    }
+    return id;
+}
+
 // ---------- safety wrapper ----------
 document.addEventListener('DOMContentLoaded', function () {
     'use strict';
@@ -65,11 +89,20 @@ document.addEventListener('DOMContentLoaded', function () {
         localStorage.setItem(STORAGE_VIEWS, v);
     }
 
-    // ----- Enhanced Analytics Tracking (in-memory + server only) -----
+    // ----- Enhanced Analytics Tracking (consent‑aware) -----
     function recordEvent(type, productId, meta = {}) {
-        const event = { type, productId, timestamp: new Date().toISOString(), ...meta };
+        const visitorId = getVisitorId();
+        const event = {
+            type,
+            productId,
+            visitorId,
+            timestamp: new Date().toISOString(),
+            ...meta,
+        };
         eventBuffer.push(event);
-        if (window.location.protocol.startsWith('http')) {
+
+        // Only send if consent given (or no banner present, e.g., admin)
+        if (window.location.protocol.startsWith('http') && (hasConsent() || !document.getElementById('cookieConsent'))) {
             fetch('/api/event', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -94,7 +127,6 @@ document.addEventListener('DOMContentLoaded', function () {
         saveWishlist(wishlist);
         updateWishlistButtons();
     }
-    // Make globally accessible for inline onclick
     window.toggleWishlist = toggleWishlist;
 
     function updateWishlistButtons() {
@@ -146,6 +178,18 @@ document.addEventListener('DOMContentLoaded', function () {
         const t = document.createElement('div');
         t.className = 'toast';
         t.textContent = msg;
+
+        const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+        if (theme === 'light') {
+            t.style.color = '#1f2035';
+            t.style.backgroundColor = '#ffffff';
+            t.style.border = '1px solid rgba(0,0,0,0.1)';
+        } else {
+            t.style.color = '#ffffff';
+            t.style.backgroundColor = '#0d0d18';
+            t.style.border = '1px solid rgba(255,255,255,0.06)';
+        }
+
         $toastContainer.appendChild(t);
         setTimeout(() => t.remove(), 2000);
     }
@@ -182,6 +226,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const reviewThumbs = (p.reviewImages || []).map(img =>
             `<img class="product-card__review-thumb" src="${escapeHTML(img)}"
                 alt="${escapeHTML(p.title)} review photo"
+                width="44" height="44"
                 onclick="event.stopPropagation(); window.openLightbox('${escapeHTML(img)}')"
                 onerror="this.style.display='none'">`
         ).join('');
@@ -189,6 +234,7 @@ document.addEventListener('DOMContentLoaded', function () {
         card.innerHTML = `
             <div class="product-card__image-wrap">
                 <img class="product-card__main-img" src="${escapeHTML(p.thumbnailUrl)}" alt="${escapeHTML(p.title)}"
+                     width="300" height="300"
                      onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22300%22><rect fill=%22%231a1a2e%22 width=%22300%22 height=%22300%22/><text fill=%22%23666%22 x=%2250%25%22 y=%2250%25%22 dy=%22.3em%22>Image</text></svg>'">
                 <div class="product-card__dhgate-badge"><i class="bi bi-diamond-fill"></i> DHGate</div>
                 <button class="product-card__wishlist-btn" data-product-id="${p.id}" aria-label="Add to wishlist" onclick="event.stopPropagation(); toggleWishlist('${p.id}')">
@@ -202,7 +248,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <div class="product-card__body">
                 <div class="product-card__title">${escapeHTML(p.title)}</div>
                 <div class="product-card__meta">
-                    <span class="product-card__price" data-usd-price="${parseFloat(p.price).toFixed(2)}">$${parseFloat(p.price).toFixed(2)}</span>
+                    <span class="product-card__price" data-usd-price="${parseFloat(p.price).toFixed(2)}" style="min-width:70px;display:inline-block;">$${parseFloat(p.price).toFixed(2)}</span>
                     <span style="color:var(--warning);"><i class="bi bi-star-fill"></i> ${p.rating || 4.5}</span>
                 </div>
                 <div class="product-card__actions">
@@ -315,32 +361,13 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function initCurrency() {
-        const cookieCurrency = document.cookie.split('; ').find(row => row.startsWith('preferred_currency='))?.split('=')[1];
+        const cookieCurrency = getCookie('preferred_currency');
         let currency = cookieCurrency || (await fetchCurrencyCode());
         currentCurrency = currency;
         currentRate = await fetchExchangeRate(currency);
-        document.cookie = `preferred_currency=${currency};max-age=31536000;path=/`;
+        setCookie('preferred_currency', currency, 365);
         updateCurrencyDisplay(currency);
-        convertPrices();
-
-        const dropdown = document.getElementById('currencyDropdown');
-        const trigger = dropdown?.querySelector('.currency-dropdown__trigger');
-        const menu = document.getElementById('currencyMenu');
-        trigger?.addEventListener('click', () => dropdown.classList.toggle('open'));
-        document.addEventListener('click', (e) => {
-            if (!dropdown?.contains(e.target)) dropdown?.classList.remove('open');
-        });
-        menu?.addEventListener('click', async (e) => {
-            const option = e.target.closest('.currency-option');
-            if (!option) return;
-            const selected = option.dataset.currency;
-            currentCurrency = selected;
-            currentRate = await fetchExchangeRate(selected);
-            document.cookie = `preferred_currency=${selected};max-age=31536000;path=/`;
-            updateCurrencyDisplay(selected);
-            convertPrices();
-            dropdown.classList.remove('open');
-        });
+        // Don't call convertPrices here; it will run after cards are rendered
     }
 
     function updateCurrencyDisplay(currency) {
@@ -412,7 +439,6 @@ document.addEventListener('DOMContentLoaded', function () {
         document.documentElement.setAttribute('data-theme', theme);
         localStorage.setItem(STORAGE_THEME, theme);
 
-        // ✅ Favicon swap
         const favicon = document.getElementById('favicon');
         if (favicon) {
             favicon.href = theme === 'light' ? '/fav/faviconlight.ico' : '/fav/favicondark.ico';
@@ -429,20 +455,45 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // ---------- start everything ----------
+    // ---------- start everything (fixed init order) ----------
     incrementPageViews();
-    renderProducts().then(() => initCurrency());
-    console.log('🚀 Storefront ready – buttons should work now.');
+    // First initialise currency, then render products (so prices are local from the start)
+    initCurrency().then(() => {
+        return renderProducts();
+    }).then(() => {
+        console.log('🚀 Storefront ready – buttons should work now.');
+    });
 });
 
-// Cookie consent
+// Enhanced Cookie consent (sets actual cookie + sends event)
 document.addEventListener('DOMContentLoaded', () => {
-    const cookieBanner = document.getElementById('cookieConsent');
-    if (cookieBanner) {
-        if (localStorage.getItem('cookie_consent')) cookieBanner.style.display = 'none';
-        document.getElementById('cookieAccept').addEventListener('click', () => {
-            cookieBanner.style.display = 'none';
+    const banner = document.getElementById('cookieConsent');
+    const acceptBtn = document.getElementById('cookieAccept');
+
+    if (banner) {
+        if (hasConsent()) {
+            banner.style.display = 'none';
+        }
+
+        acceptBtn?.addEventListener('click', () => {
+            setCookie('cookie_consent', 'accepted', 365);
             localStorage.setItem('cookie_consent', 'true');
+            banner.style.display = 'none';
+
+            fetch('/api/event', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: 'cookie_consent',
+                    productId: 'site-wide',
+                    visitorId: getVisitorId(),
+                    timestamp: new Date().toISOString()
+                })
+            }).then(() => {
+                console.log('✅ Cookie consent accepted – event sent');
+            }).catch(err => {
+                console.warn('Cookie consent event not sent:', err);
+            });
         });
     }
 });
