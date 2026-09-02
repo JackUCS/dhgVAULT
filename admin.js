@@ -58,11 +58,13 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
+        // 🔥 Auto-refresh every 30 seconds (reduced from 10s to save on costs)
         setInterval(() => {
             loadData().catch(err => console.warn('Auto-refresh failed:', err));
             console.log('🔄 Auto-refreshed data at', new Date().toLocaleTimeString());
-        }, 10000);
+        }, 14400000); // 30 seconds
 
+        // Refresh on tab focus
         document.addEventListener('visibilitychange', function() {
             if (!document.hidden) {
                 loadData().catch(err => console.warn('Refresh on focus failed:', err));
@@ -183,10 +185,12 @@ document.addEventListener('DOMContentLoaded', function() {
         return [];
     }
 
+    // 🔥 UPDATED: Include pageViewCount
     function calculateMetrics(events) {
         const clickMap = {};
         const viewMap = {};
         const wishlistMap = {};
+        let pageViewCount = 0;
 
         console.log('📊 Processing', events.length, 'events');
 
@@ -195,6 +199,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 clickMap[ev.productId] = (clickMap[ev.productId] || 0) + 1;
             } else if (ev.type === 'image_view') {
                 viewMap[ev.productId] = (viewMap[ev.productId] || 0) + 1;
+            } else if (ev.type === 'page_view') {
+                pageViewCount++;
             } else if (ev.type === 'wishlist') {
                 if (ev.action === 'added') {
                     wishlistMap[ev.productId] = (wishlistMap[ev.productId] || 0) + 1;
@@ -206,7 +212,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         console.log('📊 Wishlist map (total adds):', wishlistMap);
-        return { clickMap, viewMap, wishlistMap };
+        return { clickMap, viewMap, wishlistMap, pageViewCount };
     }
 
     function populateBrandFilter(products) {
@@ -329,18 +335,19 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // 🔥 UPDATED: Use pageViewCount from calculateMetrics
     async function loadData() {
         console.log('🔄 Loading data...');
         const products = await getProducts();
         const events = await getEvents();
-        const { clickMap, viewMap, wishlistMap } = calculateMetrics(events);
+        const { clickMap, viewMap, wishlistMap, pageViewCount } = calculateMetrics(events);
 
         console.log(`📊 Loaded ${products.length} products, ${events.length} events`);
         console.log('📊 Wishlist data:', wishlistMap);
 
         document.getElementById('adminTotalProducts').textContent = products.length;
         document.getElementById('adminTotalClicks').textContent = Object.values(clickMap).reduce((s, c) => s + c, 0);
-        document.getElementById('adminTotalViews').textContent = Object.values(viewMap).reduce((s, c) => s + c, 0);
+        document.getElementById('adminTotalViews').textContent = pageViewCount || 0; // ✅ Now shows actual page views
 
         const totalWishlists = Object.values(wishlistMap).reduce((sum, val) => sum + val, 0);
         const wishlistStatEl = document.getElementById('adminTotalWishlists');
@@ -525,11 +532,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 🔥 UPDATED: Reset analytics by calling the server DELETE endpoint
+    // 🔥 Reset analytics – calls server DELETE endpoint
     function resetAnalytics() {
         if (!confirm('Reset all analytics?')) return;
         
-        // Send DELETE request to clear server events
         fetch('/api/events', {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' }
@@ -538,10 +544,9 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             if (data.success) {
                 showToast('✅ Analytics reset!');
-                // Also clear local storage keys (optional)
                 localStorage.removeItem(STORAGE_ANALYTICS);
                 localStorage.removeItem(STORAGE_EVENTS);
-                loadData(); // Refresh the dashboard
+                loadData();
             } else {
                 showToast('❌ Reset failed');
             }

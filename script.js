@@ -106,9 +106,11 @@ document.addEventListener('DOMContentLoaded', function () {
     function incrementPageViews() {
         const v = (parseInt(localStorage.getItem(STORAGE_VIEWS)) || 0) + 1;
         localStorage.setItem(STORAGE_VIEWS, v);
+        
+        // 📊 Send page view event to server
+        recordEvent('page_view', 'site-wide', { count: v });
     }
 
-    // 🔥 IMPROVED: Enhanced Analytics Tracking with more logging
     function recordEvent(type, productId, meta = {}) {
         const visitorId = getVisitorId();
         const event = {
@@ -122,7 +124,6 @@ document.addEventListener('DOMContentLoaded', function () {
         
         console.log(`📊 [${type}] Event for ${productId}:`, event);
 
-        // Check if consent is given
         const consentGiven = hasConsent() || !document.getElementById('cookieConsent');
         console.log(`📊 Consent given: ${consentGiven}`);
 
@@ -171,8 +172,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         saveWishlist(wishlist);
         updateWishlistButtons();
-
-        // 📊 Send tracking event
         console.log(`💖 Sending wishlist event: ${action} for ${productId}`);
         recordEvent('wishlist', productId, { action: action });
     }
