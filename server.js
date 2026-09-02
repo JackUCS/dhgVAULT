@@ -16,6 +16,7 @@ app.use(compression());
 // -------------------------
 // Security Headers Middleware
 // -------------------------
+// Security headers middleware
 app.use((req, res, next) => {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
@@ -25,8 +26,8 @@ app.use((req, res, next) => {
     res.setHeader('Content-Security-Policy', 
         "default-src 'self'; " +
         "img-src 'self' data: https:; " +
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-        "font-src 'self' https://fonts.gstatic.com; " +
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; " +
+        "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; " +
         "script-src 'self' 'unsafe-inline'; " +
         "connect-src 'self' https://open.er-api.com; " +
         "frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
