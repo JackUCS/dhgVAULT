@@ -218,6 +218,7 @@ document.addEventListener('DOMContentLoaded', function () {
         updateBrandSidebar(products, filter);
     }
 
+    // ---------- UPDATED createCard() WITH BRAND ----------
     function createCard(p) {
         const card = document.createElement('div');
         card.className = 'product-card';
@@ -247,6 +248,8 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>
             <div class="product-card__body">
                 <div class="product-card__title">${escapeHTML(p.title)}</div>
+                <!-- 👇 BRAND DISPLAY (added here) -->
+                <div class="product-card__brand" style="font-size:0.85rem; color:var(--text-muted); margin-top:-4px; margin-bottom:2px;">${escapeHTML(p.brand || '')}</div>
                 <div class="product-card__meta">
                     <span class="product-card__price" data-usd-price="${parseFloat(p.price).toFixed(2)}" style="min-width:70px;display:inline-block;">$${parseFloat(p.price).toFixed(2)}</span>
                     <span style="color:var(--warning);"><i class="bi bi-star-fill"></i> ${p.rating || 4.5}</span>
@@ -367,7 +370,6 @@ document.addEventListener('DOMContentLoaded', function () {
         currentRate = await fetchExchangeRate(currency);
         setCookie('preferred_currency', currency, 365);
         updateCurrencyDisplay(currency);
-        // Don't call convertPrices here; it will run after cards are rendered
     }
 
     function updateCurrencyDisplay(currency) {
@@ -457,11 +459,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ---------- start everything (fixed init order) ----------
     incrementPageViews();
-    // First initialise currency, then render products (so prices are local from the start)
     initCurrency().then(() => {
         return renderProducts();
     }).then(() => {
-        console.log('🚀 Storefront ready – buttons should work now.');
+        console.log('🚀 Storefront ready – brand names now show on cards!');
     });
 });
 

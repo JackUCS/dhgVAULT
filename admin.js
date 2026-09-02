@@ -144,17 +144,17 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ---------- ANALYTICS ----------
-async function getEvents() {
-    if (window.location.protocol.startsWith('http')) {
-        try {
-            const res = await fetch('/api/events');
-            if (res.ok) return await res.json();
-        } catch (e) {
-            console.warn('Server events fetch failed');
+    async function getEvents() {
+        if (window.location.protocol.startsWith('http')) {
+            try {
+                const res = await fetch('/api/events');
+                if (res.ok) return await res.json();
+            } catch (e) {
+                console.warn('Server events fetch failed');
+            }
         }
+        return [];
     }
-    return [];   // no local fallback; server is the source of truth
-}
 
     function calculateMetrics(events) {
         const clickMap = {};
@@ -164,6 +164,26 @@ async function getEvents() {
             else if (ev.type === 'image_view') viewMap[ev.productId] = (viewMap[ev.productId] || 0) + 1;
         });
         return { clickMap, viewMap };
+    }
+
+    // ---------- POPULATE BRAND FILTER ----------
+    function populateBrandFilter(products) {
+        const select = document.getElementById('brandFilter');
+        if (!select) return;
+
+        select.innerHTML = '<option value="all">All Brands</option>';
+
+        const brands = [...new Set(products.map(p => p.brand).filter(Boolean))];
+        brands.sort();
+
+        brands.forEach(brand => {
+            const opt = document.createElement('option');
+            opt.value = brand;
+            opt.textContent = brand;
+            select.appendChild(opt);
+        });
+        
+        console.log(`✅ Brand filter populated with ${brands.length} brands.`);
     }
 
     async function loadData() {
@@ -183,7 +203,17 @@ async function getEvents() {
         document.getElementById('adminTopProduct').textContent = top;
 
         renderBarChart(products, clickMap);
-        renderTable(products, clickMap, viewMap);
+
+        populateBrandFilter(products);
+
+        const brandFilter = document.getElementById('brandFilter');
+        if (brandFilter) {
+            brandFilter.onchange = function() {
+                renderTable(products, clickMap);
+            };
+        }
+
+        renderTable(products, clickMap);
 
         const creds = JSON.parse(localStorage.getItem(STORAGE_VAULT_CREDS) || '{}');
         if (creds.username) document.getElementById('vaultUsernameInput').value = creds.username;
@@ -224,23 +254,32 @@ async function getEvents() {
         });
     }
 
-    function renderTable(products, clickMap, viewMap) {
+    // ---------- TABLE RENDER WITH BRAND FILTER ----------
+    function renderTable(products, clickMap) {
         const tbody = document.getElementById('adminTableBody');
         if (!tbody) return;
+
+        const brandFilter = document.getElementById('brandFilter');
+        const selectedBrand = brandFilter?.value || 'all';
+
+        let filtered = products;
+        if (selectedBrand !== 'all') {
+            filtered = products.filter(p => p.brand === selectedBrand);
+        }
+
+        const sorted = [...filtered].sort((a, b) => (clickMap[b.id] || 0) - (clickMap[a.id] || 0));
+
         tbody.innerHTML = '';
-        const sorted = [...products].sort((a, b) => (clickMap[b.id] || 0) - (clickMap[a.id] || 0));
         sorted.forEach(p => {
             const clicks = clickMap[p.id] || 0;
-            const views = viewMap[p.id] || 0;
-            const last = '—';
             const priority = clicks >= 10 ? '🔥 High' : clicks >= 4 ? '⭐ Medium' : 'Low';
             const disabledAttr = isUnlocked ? '' : 'disabled';
+
             tbody.innerHTML += `<tr>
                 <td>${p.title.substr(0, 30)}</td>
                 <td>${p.category}</td>
+                <td>${p.brand || '—'}</td>
                 <td>${clicks}</td>
-                <td>${views}</td>
-                <td>${last}</td>
                 <td>${priority}</td>
                 <td>
                     <button class="btn btn--ghost btn--sm" onclick="editProduct('${p.id}')" ${disabledAttr} title="Edit"><i class="bi bi-pencil"></i></button>
@@ -266,6 +305,7 @@ async function getEvents() {
             price: document.getElementById('inputPrice').value,
             affiliateLink: document.getElementById('inputAffiliateLink').value,
             category: document.getElementById('inputCategory').value,
+            brand: document.getElementById('inputBrand').value,
             rating: document.getElementById('inputRating').value,
             reviewImages: reviewImages.length ? reviewImages : undefined,
             createdAt: new Date().toISOString()
@@ -273,10 +313,8 @@ async function getEvents() {
 
         const product = { id: editingId || 'prod_' + Date.now(), ...productData };
 
-        // Send to server (full product with images)
         await upsertProductToServer(product);
 
-        // Update local cache WITHOUT reviewImages to avoid quota
         const localProduct = { ...product };
         delete localProduct.reviewImages;
 
@@ -343,14 +381,12 @@ async function getEvents() {
         }
     }
 
-    // ---------- DELETE PRODUCT (server-synced) ----------
     window.deleteProduct = async function(id) {
         if (!isUnlocked) return showToast('🔒 Unlock admin first');
         if (!confirm('Delete this product?')) return;
 
         await deleteProductFromServer(id);
 
-        // Update local cache
         let products = JSON.parse(localStorage.getItem(STORAGE_PRODUCTS) || '[]');
         products = products.filter(p => p.id !== id);
         localStorage.setItem(STORAGE_PRODUCTS, JSON.stringify(products));
@@ -359,7 +395,6 @@ async function getEvents() {
         showToast('🗑️ Product deleted');
     };
 
-    // ---------- EDIT PRODUCT (async, uses server data) ----------
     window.editProduct = async function(id) {
         if (!isUnlocked) return showToast('🔒 Unlock admin first');
         const products = await getProducts();
@@ -372,6 +407,7 @@ async function getEvents() {
         document.getElementById('inputPrice').value = product.price || '';
         document.getElementById('inputAffiliateLink').value = product.affiliateLink || '';
         document.getElementById('inputCategory').value = product.category || 'shirts';
+        document.getElementById('inputBrand').value = product.brand || '';
         document.getElementById('inputRating').value = product.rating || 4.5;
         document.getElementById('reviewPreviews').innerHTML = (product.reviewImages || []).map(img => `<img src="${img}" alt="review">`).join('');
         const submitBtn = document.querySelector('#addProductForm button[type="submit"]');
