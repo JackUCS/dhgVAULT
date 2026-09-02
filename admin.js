@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (btnLogout) btnLogout.addEventListener('click', () => window.location.href = 'index.html');
 
+        // Load data once on page load
         loadData();
 
         if (addForm) addForm.addEventListener('submit', handleAddProduct);
@@ -42,6 +43,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (inputDhgateLink) inputDhgateLink.addEventListener('blur', autoFillPrice);
         if (inputReviewPhotos) inputReviewPhotos.addEventListener('change', previewImages);
 
+        // ✅ Refresh Data button – manual only (no auto-refresh)
         if (btnRefresh) {
             btnRefresh.addEventListener('click', async function() {
                 this.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refreshing...';
@@ -58,19 +60,8 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
-        // 🔥 Auto-refresh every 30 seconds (reduced from 10s to save on costs)
-        setInterval(() => {
-            loadData().catch(err => console.warn('Auto-refresh failed:', err));
-            console.log('🔄 Auto-refreshed data at', new Date().toLocaleTimeString());
-        }, 14400000); // 30 seconds
-
-        // Refresh on tab focus
-        document.addEventListener('visibilitychange', function() {
-            if (!document.hidden) {
-                loadData().catch(err => console.warn('Refresh on focus failed:', err));
-                console.log('🔄 Refreshed data on tab focus at', new Date().toLocaleTimeString());
-            }
-        });
+        // ❌ REMOVED: Auto-refresh (setInterval) – no automatic refreshes
+        // ❌ REMOVED: Tab-focus refresh (visibilitychange) – no automatic refreshes
 
         document.querySelectorAll('.collapsible__trigger').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -185,7 +176,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return [];
     }
 
-    // 🔥 UPDATED: Include pageViewCount
     function calculateMetrics(events) {
         const clickMap = {};
         const viewMap = {};
@@ -335,7 +325,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 🔥 UPDATED: Use pageViewCount from calculateMetrics
     async function loadData() {
         console.log('🔄 Loading data...');
         const products = await getProducts();
@@ -347,7 +336,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         document.getElementById('adminTotalProducts').textContent = products.length;
         document.getElementById('adminTotalClicks').textContent = Object.values(clickMap).reduce((s, c) => s + c, 0);
-        document.getElementById('adminTotalViews').textContent = pageViewCount || 0; // ✅ Now shows actual page views
+        document.getElementById('adminTotalViews').textContent = pageViewCount || 0;
 
         const totalWishlists = Object.values(wishlistMap).reduce((sum, val) => sum + val, 0);
         const wishlistStatEl = document.getElementById('adminTotalWishlists');
@@ -532,7 +521,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 🔥 Reset analytics – calls server DELETE endpoint
     function resetAnalytics() {
         if (!confirm('Reset all analytics?')) return;
         

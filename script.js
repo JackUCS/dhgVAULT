@@ -41,6 +41,41 @@ function getStarsHTML(rating) {
     return stars;
 }
 
+// ---------- Global event queue ----------
+let pendingEvents = [];
+
+function sendEvent(event) {
+    if (window.location.protocol.startsWith('http') && hasConsent()) {
+        fetch('/api/event', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(event),
+            keepalive: true,
+        })
+        .then(res => {
+            if (res.ok) {
+                console.log(`✅ Event sent: ${event.type} for ${event.productId}`);
+            } else {
+                console.warn(`⚠️ Event send returned ${res.status}: ${event.type}`);
+            }
+        })
+        .catch(err => console.warn('❌ Event send failed:', err));
+    } else {
+        console.log(`⏳ Event queued: ${event.type} for ${event.productId}`);
+        pendingEvents.push(event);
+    }
+}
+
+function flushPendingEvents() {
+    if (pendingEvents.length) {
+        console.log(`🔄 Sending ${pendingEvents.length} queued events...`);
+        // Make a copy to avoid issues if new events are added during flush
+        const eventsToSend = pendingEvents.slice();
+        pendingEvents = [];
+        eventsToSend.forEach(ev => sendEvent(ev));
+    }
+}
+
 // ---------- safety wrapper ----------
 document.addEventListener('DOMContentLoaded', function () {
     'use strict';
@@ -103,12 +138,21 @@ document.addEventListener('DOMContentLoaded', function () {
     function getAnalytics() {
         try { return JSON.parse(localStorage.getItem(STORAGE_ANALYTICS)) || {}; } catch (e) { return {}; }
     }
+
     function incrementPageViews() {
         const v = (parseInt(localStorage.getItem(STORAGE_VIEWS)) || 0) + 1;
         localStorage.setItem(STORAGE_VIEWS, v);
         
-        // 📊 Send page view event to server
-        recordEvent('page_view', 'site-wide', { count: v });
+        // 📊 Send page view event – uses the global sendEvent
+        const visitorId = getVisitorId();
+        const event = {
+            type: 'page_view',
+            productId: 'site-wide',
+            visitorId,
+            timestamp: new Date().toISOString(),
+            count: v,
+        };
+        sendEvent(event);
     }
 
     function recordEvent(type, productId, meta = {}) {
@@ -121,32 +165,8 @@ document.addEventListener('DOMContentLoaded', function () {
             ...meta,
         };
         eventBuffer.push(event);
-        
         console.log(`📊 [${type}] Event for ${productId}:`, event);
-
-        const consentGiven = hasConsent() || !document.getElementById('cookieConsent');
-        console.log(`📊 Consent given: ${consentGiven}`);
-
-        if (window.location.protocol.startsWith('http') && consentGiven) {
-            fetch('/api/event', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(event),
-                keepalive: true,
-            })
-            .then(res => {
-                if (res.ok) {
-                    console.log(`✅ Event sent successfully: ${type} for ${productId}`);
-                } else {
-                    console.warn(`⚠️ Event send returned ${res.status}: ${type} for ${productId}`);
-                }
-            })
-            .catch(err => {
-                console.warn('❌ Event send failed:', err);
-            });
-        } else {
-            console.log(`⏳ Event queued (no consent yet or not on server): ${type} for ${productId}`);
-        }
+        sendEvent(event);
     }
 
     // ---------- wishlist functions ----------
@@ -516,7 +536,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 
-// Enhanced Cookie consent
+// Enhanced Cookie consent – flush pending events when consent is given
 document.addEventListener('DOMContentLoaded', () => {
     const banner = document.getElementById('cookieConsent');
     const acceptBtn = document.getElementById('cookieAccept');
@@ -524,6 +544,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (banner) {
         if (hasConsent()) {
             banner.style.display = 'none';
+            // If consent already given, flush any pending events
+            setTimeout(flushPendingEvents, 500); // small delay to ensure other scripts run
         }
 
         acceptBtn?.addEventListener('click', () => {
@@ -531,6 +553,7 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('cookie_consent', 'true');
             banner.style.display = 'none';
 
+            // Send the cookie consent event
             fetch('/api/event', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -542,8 +565,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 })
             }).then(() => {
                 console.log('✅ Cookie consent accepted – event sent');
+                // After consent is accepted, flush all pending events
+                flushPendingEvents();
             }).catch(err => {
                 console.warn('Cookie consent event not sent:', err);
+                // Still flush pending events even if consent event fails
+                flushPendingEvents();
             });
         });
     }
