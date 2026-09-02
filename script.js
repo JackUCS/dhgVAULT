@@ -260,7 +260,7 @@ document.addEventListener('DOMContentLoaded', function () {
         setTimeout(() => t.remove(), 2000);
     }
 
-    // ---------- render ----------
+    // ---------- 🔥 renderProducts – passes index to createCard ----------
     async function renderProducts(filter = 'all') {
         const products = await getProducts();
         let filtered = products;
@@ -278,17 +278,23 @@ document.addEventListener('DOMContentLoaded', function () {
             $productsGrid.style.display = '';
             $emptyState.style.display = 'none';
         }
-        filtered.forEach(p => $productsGrid.appendChild(createCard(p)));
+        // ✅ Pass index to createCard
+        filtered.forEach((p, index) => $productsGrid.appendChild(createCard(p, index)));
         updateWishlistButtons();
         convertPrices();
         updateBrandSidebar(products, filter);
     }
 
-    // ---------- createCard() WITH VISUAL STARS & lazy loading ----------
-    function createCard(p) {
+    // ---------- 🔥 createCard – first 4 products load immediately ----------
+    function createCard(p, index) {
         const card = document.createElement('div');
         card.className = 'product-card';
         card.dataset.productId = p.id;
+
+        // First 4 products: no lazy-load, high priority (covers the fold on desktop & mobile)
+        const isAboveFold = index < 4;
+        const loadingAttr = isAboveFold ? '' : 'loading="lazy"';
+        const fetchPriority = isAboveFold ? 'fetchpriority="high"' : '';
 
         const reviewThumbs = (p.reviewImages || []).map(img =>
             `<img class="product-card__review-thumb" src="${escapeHTML(img)}"
@@ -303,7 +309,8 @@ document.addEventListener('DOMContentLoaded', function () {
             <div class="product-card__image-wrap">
                 <img class="product-card__main-img" src="${escapeHTML(p.thumbnailUrl)}" alt="${escapeHTML(p.title)}"
                      width="300" height="300"
-                     loading="lazy"
+                     ${loadingAttr}
+                     ${fetchPriority}
                      onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22300%22><rect fill=%22%231a1a2e%22 width=%22300%22 height=%22300%22/><text fill=%22%23666%22 x=%2250%25%22 y=%2250%25%22 dy=%22.3em%22>Image</text></svg>'">
                 <div class="product-card__dhgate-badge"><i class="bi bi-diamond-fill"></i> DHGate</div>
                 <button class="product-card__wishlist-btn" data-product-id="${p.id}" aria-label="Add to wishlist" onclick="event.stopPropagation(); toggleWishlist('${p.id}')">
