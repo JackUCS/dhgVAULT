@@ -227,8 +227,8 @@ app.use(express.static(__dirname, {
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 app.use('/.well-known', (req, res) => res.status(404).end());
 
-// Fallback – silently end if file doesn't exist
-app.get('*', (req, res) => {
+// 🔥 FIXED: Changed '*' to '/*' to work with Express 5 / path-to-regexp v8!
+app.get('/*', (req, res) => {
     const filePath = path.join(__dirname, req.path);
     fs.access(filePath, fs.constants.F_OK, (err) => {
         if (err) return res.status(404).end();
