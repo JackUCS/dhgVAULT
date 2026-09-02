@@ -2017,3 +2017,63 @@ body {
         height: 32px !important;
     }
 }
+
+/* ===========================
+   MOBILE BRAND FILTER FIX
+   =========================== */
+@media (max-width: 768px) {
+    /* Stack catalog layout vertically */
+    .catalog-layout {
+        flex-direction: column !important;
+        gap: 10px !important;
+    }
+
+    /* Make brand sidebar full width, no side floating */
+    .brand-sidebar {
+        display: block !important;   /* ensure it shows when category selected */
+        width: 100% !important;
+        flex: none !important;
+        margin-bottom: 4px !important;
+        padding: 0 !important;
+        background: transparent !important;
+        border: none !important;
+    }
+
+    /* Hide the "Brands" heading on mobile to save space */
+    .brand-sidebar h3 {
+        display: none !important;
+    }
+
+    /* Turn brand list into horizontal scrollable pills */
+    .brand-list {
+        display: flex !important;
+        flex-direction: row !important;
+        overflow-x: auto !important;
+        gap: 6px !important;
+        padding-bottom: 6px !important;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;          /* Firefox */
+        -ms-overflow-style: none;       /* IE/Edge */
+    }
+
+    .brand-list::-webkit-scrollbar {
+        display: none;                  /* Chrome/Safari */
+    }
+
+    .brand-item {
+        flex: 0 0 auto !important;
+        white-space: nowrap !important;
+        padding: 5px 12px !important;
+        border-radius: 14px !important;
+        border: 1px solid var(--glass-border) !important;
+        background: var(--glass) !important;
+        font-size: 0.75rem !important;
+        color: var(--text-secondary) !important;
+    }
+
+    .brand-item.active {
+        background: rgba(99,102,241,0.15) !important;
+        border-color: rgba(129,140,248,0.5) !important;
+        color: var(--accent) !important;
+    }
+}
