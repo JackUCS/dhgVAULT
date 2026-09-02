@@ -525,13 +525,31 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // 🔥 UPDATED: Reset analytics by calling the server DELETE endpoint
     function resetAnalytics() {
-        if (confirm('Reset all analytics?')) {
-            localStorage.removeItem(STORAGE_ANALYTICS);
-            localStorage.removeItem(STORAGE_EVENTS);
-            loadData();
-            showToast('Analytics reset.');
-        }
+        if (!confirm('Reset all analytics?')) return;
+        
+        // Send DELETE request to clear server events
+        fetch('/api/events', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showToast('✅ Analytics reset!');
+                // Also clear local storage keys (optional)
+                localStorage.removeItem(STORAGE_ANALYTICS);
+                localStorage.removeItem(STORAGE_EVENTS);
+                loadData(); // Refresh the dashboard
+            } else {
+                showToast('❌ Reset failed');
+            }
+        })
+        .catch(err => {
+            console.error('Reset error:', err);
+            showToast('❌ Reset failed');
+        });
     }
 
     window.deleteProduct = async function(id) {

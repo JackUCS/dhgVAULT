@@ -196,6 +196,12 @@ app.get('/api/events', (req, res) => {
     res.json(readJSON(EVENTS_FILE, []));
 });
 
+// 🔥 NEW: Clear all events (Reset Analytics)
+app.delete('/api/events', (req, res) => {
+    writeJSON(EVENTS_FILE, []);
+    res.json({ success: true });
+});
+
 // ---------- Static files ----------
 app.use(express.static(__dirname, {
     maxAge: '7d',
