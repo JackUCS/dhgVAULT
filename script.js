@@ -192,7 +192,7 @@ document.addEventListener('DOMContentLoaded', function () {
                      onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22300%22><rect fill=%22%231a1a2e%22 width=%22300%22 height=%22300%22/><text fill=%22%23666%22 x=%2250%25%22 y=%2250%25%22 dy=%22.3em%22>Image</text></svg>'">
                 <div class="product-card__dhgate-badge"><i class="bi bi-diamond-fill"></i> DHGate</div>
                 <button class="product-card__wishlist-btn" data-product-id="${p.id}" aria-label="Add to wishlist" onclick="event.stopPropagation(); toggleWishlist('${p.id}')">
-                <i class="bi bi-heart" aria-hidden="true"></i>
+                    <i class="bi bi-heart" aria-hidden="true"></i>
                 </button>
                 ${(p.reviewImages || []).length > 0 ? `<div style="position:absolute;top:52px;right:12px;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);padding:3px 10px;border-radius:5px;font-size:0.65rem;color:#fff;"><i class="bi bi-camera-fill"></i> ${p.reviewImages.length}</div>` : ''}
                 <div class="product-card__review-overlay">
@@ -395,7 +395,7 @@ document.addEventListener('DOMContentLoaded', function () {
             document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('filter-pill--active'));
             e.target.classList.add('filter-pill--active');
             currentFilter = e.target.dataset.category;
-            currentBrand = null;   // reset brand when category changes
+            currentBrand = null;
             renderProducts(currentFilter);
         }
     });
@@ -411,6 +411,13 @@ document.addEventListener('DOMContentLoaded', function () {
     function setTheme(theme) {
         document.documentElement.setAttribute('data-theme', theme);
         localStorage.setItem(STORAGE_THEME, theme);
+
+        // ✅ Favicon swap
+        const favicon = document.getElementById('favicon');
+        if (favicon) {
+            favicon.href = theme === 'light' ? '/fav/faviconlight.ico' : '/fav/favicondark.ico';
+        }
+
         if (themeIcon) themeIcon.className = theme === 'light' ? 'bi bi-moon-fill' : 'bi bi-sun-fill';
     }
     const savedTheme = localStorage.getItem(STORAGE_THEME) || 'dark';

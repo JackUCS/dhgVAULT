@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wishlist — DHGateVault</title>
+    <title>Wishlist</title>
+    <link id="favicon" rel="icon" href="/fav/favicondark.ico" type="image/x-icon">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <link rel="stylesheet" href="styles.min.css">
 </head>
@@ -107,11 +108,20 @@
             // ---------- THEME TOGGLE ----------
             const themeToggle = document.getElementById('themeToggle');
             const themeIcon = themeToggle?.querySelector('i');
+            const favicon = document.getElementById('favicon');
+
             function setTheme(theme) {
                 document.documentElement.setAttribute('data-theme', theme);
                 localStorage.setItem('dhgatevault_theme', theme);
+
+                // Update favicon
+                if (favicon) {
+                    favicon.href = theme === 'light' ? '/fav/faviconlight.ico' : '/fav/favicondark.ico';
+                }
+
                 if (themeIcon) themeIcon.className = theme === 'light' ? 'bi bi-moon-fill' : 'bi bi-sun-fill';
             }
+
             const savedTheme = localStorage.getItem('dhgatevault_theme') || 'dark';
             setTheme(savedTheme);
             themeToggle?.addEventListener('click', () => {

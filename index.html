@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DHGateVault — Curated Men's Fashion Reps</title>
+    <title>DHGateVault ● Curated Men's Fashion Reps</title>
+    <!-- Use absolute path for favicon -->
+    <link id="favicon" rel="icon" href="/fav/favicondark.ico" type="image/x-icon">
     <meta name="description" content="DHGateVault is the trusted resource for men's fashion reps. Real reviews, real photos, hand‑picked DHGate finds.">
     <meta name="keywords" content="fashionreps, DHGate reviews, reddit DHGate, DHGateVault, men's fashion reps">
     <meta property="og:title" content="DHGateVault — Curated DHGate Fashion Reps">
@@ -151,5 +153,31 @@
     </div>
 
     <script src="script.min.js"></script>
+    <!-- Extra favicon observer: ensures favicon updates even if script.min.js missed it -->
+    <script>
+        (function() {
+            const favicon = document.getElementById('favicon');
+            if (!favicon) return;
+
+            function updateFavicon(theme) {
+                favicon.href = theme === 'light' ? '/fav/faviconlight.ico' : '/fav/favicondark.ico';
+            }
+
+            // Initial sync
+            updateFavicon(document.documentElement.getAttribute('data-theme') || 'dark');
+
+            // Watch for attribute changes on <html>
+            const observer = new MutationObserver(mutations => {
+                mutations.forEach(mutation => {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
+                        const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+                        updateFavicon(theme);
+                    }
+                });
+            });
+
+            observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+        })();
+    </script>
 </body>
 </html>
