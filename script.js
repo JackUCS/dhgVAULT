@@ -72,7 +72,8 @@ document.addEventListener('DOMContentLoaded', function () {
     async function getProducts() {
         if (window.location.protocol.startsWith('http')) {
             try {
-                const res = await fetch('/api/products');
+                // 🔥 ADDED CACHE-BUSTING QUERY PARAMETER
+                const res = await fetch('/api/products?t=' + Date.now());
                 if (res.ok) return await res.json();
             } catch (e) {
                 console.warn('Server product fetch failed, using local storage');

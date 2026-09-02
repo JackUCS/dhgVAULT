@@ -16,7 +16,6 @@ app.use(compression());
 // -------------------------
 // Security Headers Middleware
 // -------------------------
-// Security headers middleware
 app.use((req, res, next) => {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
@@ -139,7 +138,11 @@ function writeJSON(file, data) {
     fs.writeFileSync(file, JSON.stringify(data, null, 2));
 }
 
+// 🔥 UPDATED: Added no-cache headers
 app.get('/api/products', (req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.json(readJSON(PRODUCTS_FILE, []));
 });
 
@@ -174,7 +177,11 @@ app.post('/api/event', (req, res) => {
     res.json({ success: true });
 });
 
+// 🔥 UPDATED: Added no-cache headers to events endpoint as well
 app.get('/api/events', (req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.json(readJSON(EVENTS_FILE, []));
 });
 
