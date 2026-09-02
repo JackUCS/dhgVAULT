@@ -12,5 +12,32 @@
     "visitorId": "v_cc2jv3hhd",
     "timestamp": "2026-09-02T22:37:11.575Z",
     "count": 5
+  },
+  {
+    "type": "cookie_consent",
+    "productId": "site-wide",
+    "visitorId": "v_cm85mscku",
+    "timestamp": "2026-09-02T22:54:22.790Z"
+  },
+  {
+    "type": "page_view",
+    "productId": "site-wide",
+    "visitorId": "v_cm85mscku",
+    "timestamp": "2026-09-02T22:54:22.796Z",
+    "count": 1
+  },
+  {
+    "type": "wishlist",
+    "productId": "prod_1788305016421",
+    "visitorId": "v_cm85mscku",
+    "timestamp": "2026-09-02T22:54:25.563Z",
+    "action": "added"
+  },
+  {
+    "type": "click",
+    "productId": "prod_1788295347610",
+    "visitorId": "v_cm85mscku",
+    "timestamp": "2026-09-02T22:54:49.369Z",
+    "link": "https://sale.dhgate.com/uLXpSK33"
   }
 ]
