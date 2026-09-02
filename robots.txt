@@ -1,6 +1,7 @@
 User-agent: *
 Allow: /
 Disallow: /admin.html
+Disallow: /my-secret-admin-xyz789
 Disallow: /vault/
 Disallow: /api/
 Sitemap: https://dhgatevault.com/sitemap.xml

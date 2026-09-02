@@ -1,3 +1,5 @@
+require('dotenv').config(); // Load environment variables from .env file
+
 const express = require('express');
 const path = require('path');
 const requestIp = require('request-ip');
@@ -6,9 +8,14 @@ const fs = require('fs');
 const sharp = require('sharp');
 const multer = require('multer');
 const compression = require('compression');
+const basicAuth = require('express-basic-auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// ---- Admin credentials from environment variables ----
+const ADMIN_USER = process.env.ADMIN_USER || 'admin';
+const ADMIN_PASS = process.env.ADMIN_PASS || 'change-me-now';
 
 // Enable gzip compression for all responses
 app.use(compression());
@@ -63,9 +70,32 @@ const upload = multer({
 app.use((req, res, next) => {
     if (req.path.startsWith('/api/')) return next();
     if (!path.extname(req.path) && req.path !== '/') {
-        req.url = req.path === '/admin' ? '/admin.html' : req.path + '.html';
+        req.url = req.path + '.html';
     }
     next();
+});
+
+// ---------- 🔥 ADMIN SECURITY (HTTP Basic Auth) ----------
+// Choose a hard-to-guess custom path – change this to something unique!
+const ADMIN_PATH = process.env.ADMIN_PATH || '/dhgate-admin-x7k9p2';
+
+// Protect the default admin page (optional – keep as a honeypot or remove)
+app.use('/admin.html', basicAuth({
+    users: { [ADMIN_USER]: ADMIN_PASS },
+    challenge: true,
+    realm: 'Admin Area'
+}));
+
+// Protect your custom admin path
+app.use(ADMIN_PATH, basicAuth({
+    users: { [ADMIN_USER]: ADMIN_PASS },
+    challenge: true,
+    realm: 'Admin Area'
+}));
+
+// Serve the admin page at the custom path
+app.get(ADMIN_PATH, (req, res) => {
+    res.sendFile(path.join(__dirname, 'admin.html'));
 });
 
 // ---------- IP Geolocation Endpoint ----------
@@ -106,7 +136,6 @@ app.post('/api/upload-review-photos', upload.array('photos', 10), async (req, re
             const filename = `review-${Date.now()}-${Math.random().toString(36).substr(2, 6)}.webp`;
             const outputPath = path.join(UPLOADS_DIR, filename);
 
-            // Resize to max 1200px on longest side, then convert to WebP
             await sharp(file.buffer)
                 .resize({ width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true })
                 .webp({ quality: 80 })
@@ -138,7 +167,6 @@ function writeJSON(file, data) {
     fs.writeFileSync(file, JSON.stringify(data, null, 2));
 }
 
-// 🔥 UPDATED: Added no-cache headers
 app.get('/api/products', (req, res) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
@@ -177,7 +205,6 @@ app.post('/api/event', (req, res) => {
     res.json({ success: true });
 });
 
-// 🔥 UPDATED: Added no-cache headers to events endpoint as well
 app.get('/api/events', (req, res) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
@@ -191,7 +218,7 @@ app.use(express.static(__dirname, {
     immutable: true,
     setHeaders: (res, filePath) => {
         if (filePath.endsWith('.html')) {
-            res.setHeader('Cache-Control', 'no-cache'); // HTML always fresh
+            res.setHeader('Cache-Control', 'no-cache');
         }
     }
 }));
@@ -211,4 +238,5 @@ app.get('*', (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`✅ Server running on port ${PORT}`);
+    console.log(`🔐 Admin panel: http://localhost:${PORT}${ADMIN_PATH}`);
 });
