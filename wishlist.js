@@ -56,8 +56,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <img class="product-card__main-img" src="${p.thumbnailUrl}" alt="${p.title}"
                          onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22300%22><rect fill=%22%231a1a2e%22 width=%22300%22 height=%22300%22/><text fill=%22%23666%22 x=%2250%25%22 y=%2250%25%22 dy=%22.3em%22>Image</text></svg>'">
                     <div class="product-card__dhgate-badge"><i class="bi bi-diamond-fill"></i> DHGate</div>
-                    <button class="product-card__wishlist-btn active" onclick="removeFromWishlist('${p.id}')">
-                        <i class="bi bi-heart-fill"></i>
+                    <button class="product-card__wishlist-btn active" aria-label="Remove from wishlist" onclick="removeFromWishlist('${p.id}')">
+                        <i class="bi bi-heart-fill" aria-hidden="true"></i>
                     </button>
                 </div>
                 <div class="product-card__body">

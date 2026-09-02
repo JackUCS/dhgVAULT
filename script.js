@@ -181,8 +181,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const reviewThumbs = (p.reviewImages || []).map(img =>
             `<img class="product-card__review-thumb" src="${escapeHTML(img)}"
-                  onclick="event.stopPropagation(); window.openLightbox('${escapeHTML(img)}')"
-                  onerror="this.style.display='none'">`
+                alt="${escapeHTML(p.title)} review photo"
+                onclick="event.stopPropagation(); window.openLightbox('${escapeHTML(img)}')"
+                onerror="this.style.display='none'">`
         ).join('');
 
         card.innerHTML = `
@@ -190,8 +191,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 <img class="product-card__main-img" src="${escapeHTML(p.thumbnailUrl)}" alt="${escapeHTML(p.title)}"
                      onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22300%22><rect fill=%22%231a1a2e%22 width=%22300%22 height=%22300%22/><text fill=%22%23666%22 x=%2250%25%22 y=%2250%25%22 dy=%22.3em%22>Image</text></svg>'">
                 <div class="product-card__dhgate-badge"><i class="bi bi-diamond-fill"></i> DHGate</div>
-                <button class="product-card__wishlist-btn" data-product-id="${p.id}" onclick="event.stopPropagation(); toggleWishlist('${p.id}')">
-                    <i class="bi bi-heart"></i>
+                <button class="product-card__wishlist-btn" data-product-id="${p.id}" aria-label="Add to wishlist" onclick="event.stopPropagation(); toggleWishlist('${p.id}')">
+                <i class="bi bi-heart" aria-hidden="true"></i>
                 </button>
                 ${(p.reviewImages || []).length > 0 ? `<div style="position:absolute;top:52px;right:12px;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);padding:3px 10px;border-radius:5px;font-size:0.65rem;color:#fff;"><i class="bi bi-camera-fill"></i> ${p.reviewImages.length}</div>` : ''}
                 <div class="product-card__review-overlay">
@@ -448,4 +449,3 @@ if (glow && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
         glow.style.top = e.clientY + 'px';
     });
 }
-

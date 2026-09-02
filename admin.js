@@ -11,7 +11,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const $toast = document.getElementById('toastContainer');
     let isUnlocked = false;
     let editingId = null;
-    let currentBrandFilter = 'all';
 
     function showToast(msg) {
         if (!$toast) return;
@@ -77,7 +76,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const btnResetAnalytics = document.getElementById('btnResetAnalytics');
         const inputDhgateLink = document.getElementById('inputDhgateLink');
         const inputReviewPhotos = document.getElementById('inputReviewPhotos');
-        const brandFilterSelect = document.getElementById('brandFilter');
 
         if (btnLogout) btnLogout.addEventListener('click', () => window.location.href = 'index.html');
         if (btnUnlock) btnUnlock.addEventListener('click', attemptUnlock);
@@ -91,12 +89,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (btnResetAnalytics) btnResetAnalytics.addEventListener('click', resetAnalytics);
         if (inputDhgateLink) inputDhgateLink.addEventListener('blur', autoFillPrice);
         if (inputReviewPhotos) inputReviewPhotos.addEventListener('change', previewImages);
-        if (brandFilterSelect) {
-            brandFilterSelect.addEventListener('change', () => {
-                currentBrandFilter = brandFilterSelect.value;
-                loadData();
-            });
-        }
 
         document.querySelectorAll('.collapsible__trigger').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -152,17 +144,17 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ---------- ANALYTICS ----------
-    async function getEvents() {
-        if (window.location.protocol.startsWith('http')) {
-            try {
-                const res = await fetch('/api/events');
-                if (res.ok) return await res.json();
-            } catch (e) {
-                console.warn('Server events fetch failed');
-            }
+async function getEvents() {
+    if (window.location.protocol.startsWith('http')) {
+        try {
+            const res = await fetch('/api/events');
+            if (res.ok) return await res.json();
+        } catch (e) {
+            console.warn('Server events fetch failed');
         }
-        return [];
     }
+    return [];   // no local fallback; server is the source of truth
+}
 
     function calculateMetrics(events) {
         const clickMap = {};
@@ -172,17 +164,6 @@ document.addEventListener('DOMContentLoaded', function() {
             else if (ev.type === 'image_view') viewMap[ev.productId] = (viewMap[ev.productId] || 0) + 1;
         });
         return { clickMap, viewMap };
-    }
-
-    function populateBrandFilter(products) {
-        const select = document.getElementById('brandFilter');
-        if (!select) return;
-        const brands = [...new Set(products.map(p => p.brand).filter(Boolean))].sort();
-        select.innerHTML = '<option value="all">All Brands</option>';
-        brands.forEach(brand => {
-            select.innerHTML += `<option value="${brand}">${brand}</option>`;
-        });
-        select.value = currentBrandFilter;
     }
 
     async function loadData() {
@@ -201,9 +182,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         document.getElementById('adminTopProduct').textContent = top;
 
-        populateBrandFilter(products);
         renderBarChart(products, clickMap);
-        renderTable(products, clickMap, viewMap, currentBrandFilter);
+        renderTable(products, clickMap, viewMap);
 
         const creds = JSON.parse(localStorage.getItem(STORAGE_VAULT_CREDS) || '{}');
         if (creds.username) document.getElementById('vaultUsernameInput').value = creds.username;
@@ -244,22 +224,23 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    function renderTable(products, clickMap, viewMap, brandFilter = 'all') {
+    function renderTable(products, clickMap, viewMap) {
         const tbody = document.getElementById('adminTableBody');
         if (!tbody) return;
         tbody.innerHTML = '';
         const sorted = [...products].sort((a, b) => (clickMap[b.id] || 0) - (clickMap[a.id] || 0));
         sorted.forEach(p => {
-            if (brandFilter !== 'all' && p.brand !== brandFilter) return;
             const clicks = clickMap[p.id] || 0;
             const views = viewMap[p.id] || 0;
+            const last = '—';
             const priority = clicks >= 10 ? '🔥 High' : clicks >= 4 ? '⭐ Medium' : 'Low';
             const disabledAttr = isUnlocked ? '' : 'disabled';
             tbody.innerHTML += `<tr>
                 <td>${p.title.substr(0, 30)}</td>
                 <td>${p.category}</td>
-                <td>${p.brand || '—'}</td>
                 <td>${clicks}</td>
+                <td>${views}</td>
+                <td>${last}</td>
                 <td>${priority}</td>
                 <td>
                     <button class="btn btn--ghost btn--sm" onclick="editProduct('${p.id}')" ${disabledAttr} title="Edit"><i class="bi bi-pencil"></i></button>
@@ -269,34 +250,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ✅ Updated handleAddProduct with file upload to WebP
     async function handleAddProduct(e) {
         e.preventDefault();
         if (!isUnlocked) return;
-
         const files = document.getElementById('inputReviewPhotos')?.files || [];
-        let reviewImages = [];
-
-        if (files.length > 0) {
-            try {
-                const formData = new FormData();
-                for (const file of files) {
-                    formData.append('photos', file);
-                }
-                const uploadRes = await fetch('/api/upload-review-photos', {
-                    method: 'POST',
-                    body: formData
-                });
-                if (!uploadRes.ok) throw new Error('Upload failed');
-                const data = await uploadRes.json();
-                reviewImages = data.urls;
-            } catch (err) {
-                console.error('Image upload failed:', err);
-                showToast('⚠️ Image upload failed; product saved without images');
-                reviewImages = [];
-            }
+        const reviewImages = [];
+        for (let f of files) {
+            const b64 = await new Promise(r => { const rd = new FileReader(); rd.onload = () => r(rd.result); rd.readAsDataURL(f); });
+            reviewImages.push(b64);
         }
-
         const productData = {
             dhgateLink: document.getElementById('inputDhgateLink').value,
             thumbnailUrl: document.getElementById('inputThumbnailUrl').value,
@@ -304,15 +266,17 @@ document.addEventListener('DOMContentLoaded', function() {
             price: document.getElementById('inputPrice').value,
             affiliateLink: document.getElementById('inputAffiliateLink').value,
             category: document.getElementById('inputCategory').value,
-            brand: document.getElementById('inputBrand').value.trim(),
             rating: document.getElementById('inputRating').value,
             reviewImages: reviewImages.length ? reviewImages : undefined,
             createdAt: new Date().toISOString()
         };
 
         const product = { id: editingId || 'prod_' + Date.now(), ...productData };
+
+        // Send to server (full product with images)
         await upsertProductToServer(product);
 
+        // Update local cache WITHOUT reviewImages to avoid quota
         const localProduct = { ...product };
         delete localProduct.reviewImages;
 
@@ -353,11 +317,7 @@ document.addEventListener('DOMContentLoaded', function() {
         container.innerHTML = '';
         for (let f of this.files) {
             const r = new FileReader();
-            r.onload = e => {
-                const img = document.createElement('img');
-                img.src = e.target.result;
-                container.appendChild(img);
-            };
+            r.onload = e => { const img = document.createElement('img'); img.src = e.target.result; container.appendChild(img); };
             r.readAsDataURL(f);
         }
     }
@@ -390,6 +350,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         await deleteProductFromServer(id);
 
+        // Update local cache
         let products = JSON.parse(localStorage.getItem(STORAGE_PRODUCTS) || '[]');
         products = products.filter(p => p.id !== id);
         localStorage.setItem(STORAGE_PRODUCTS, JSON.stringify(products));
@@ -411,7 +372,6 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('inputPrice').value = product.price || '';
         document.getElementById('inputAffiliateLink').value = product.affiliateLink || '';
         document.getElementById('inputCategory').value = product.category || 'shirts';
-        document.getElementById('inputBrand').value = product.brand || '';
         document.getElementById('inputRating').value = product.rating || 4.5;
         document.getElementById('reviewPreviews').innerHTML = (product.reviewImages || []).map(img => `<img src="${img}" alt="review">`).join('');
         const submitBtn = document.querySelector('#addProductForm button[type="submit"]');
