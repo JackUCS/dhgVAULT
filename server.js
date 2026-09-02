@@ -13,6 +13,27 @@ const PORT = process.env.PORT || 3000;
 // Enable gzip compression for all responses
 app.use(compression());
 
+// -------------------------
+// Security Headers Middleware
+// -------------------------
+app.use((req, res, next) => {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+    res.setHeader('Content-Security-Policy', 
+        "default-src 'self'; " +
+        "img-src 'self' data: https:; " +
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+        "font-src 'self' https://fonts.gstatic.com; " +
+        "script-src 'self' 'unsafe-inline'; " +
+        "connect-src 'self' https://open.er-api.com; " +
+        "frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
+    );
+    next();
+});
+
 // Reduce JSON limit since we no longer embed base64 images
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ limit: '5mb', extended: true }));
