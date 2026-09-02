@@ -76,7 +76,6 @@ app.use((req, res, next) => {
 });
 
 // ---------- 🔥 ADMIN SECURITY (HTTP Basic Auth) ----------
-// Choose a hard-to-guess custom path – change this to something unique!
 const ADMIN_PATH = process.env.ADMIN_PATH || '/dhgate-admin-x7k9p2';
 
 // Protect the default admin page (optional – keep as a honeypot or remove)
@@ -227,13 +226,9 @@ app.use(express.static(__dirname, {
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 app.use('/.well-known', (req, res) => res.status(404).end());
 
-// 🔥 FIXED: Changed '*' to '/*' to work with Express 5 / path-to-regexp v8!
-app.get('/*', (req, res) => {
-    const filePath = path.join(__dirname, req.path);
-    fs.access(filePath, fs.constants.F_OK, (err) => {
-        if (err) return res.status(404).end();
-        res.sendFile(filePath);
-    });
+// 🔥 FIXED: 404 handler – no path-to-regexp, works with Express 5
+app.use((req, res) => {
+    res.status(404).end();
 });
 
 app.listen(PORT, () => {
