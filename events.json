@@ -52,5 +52,183 @@
     "productId": "site-wide",
     "visitorId": "v_rvjez3exe",
     "timestamp": "2026-09-02T14:15:36.937Z"
+  },
+  {
+    "type": "cookie_consent",
+    "productId": "site-wide",
+    "visitorId": "v_gs696va72",
+    "timestamp": "2026-09-02T20:19:45.616Z"
+  },
+  {
+    "type": "wishlist",
+    "productId": "prod_1788305016421",
+    "visitorId": "v_gs696va72",
+    "timestamp": "2026-09-02T20:19:51.978Z",
+    "action": "added"
+  },
+  {
+    "type": "wishlist",
+    "productId": "prod_1788295347610",
+    "visitorId": "v_gs696va72",
+    "timestamp": "2026-09-02T20:20:12.394Z",
+    "action": "removed"
+  },
+  {
+    "type": "wishlist",
+    "productId": "prod_1788295347610",
+    "visitorId": "v_gs696va72",
+    "timestamp": "2026-09-02T20:20:13.508Z",
+    "action": "added"
+  },
+  {
+    "type": "wishlist",
+    "productId": "prod_1788305016421",
+    "visitorId": "v_gs696va72",
+    "timestamp": "2026-09-02T20:20:14.342Z",
+    "action": "removed"
+  },
+  {
+    "type": "wishlist",
+    "productId": "prod_1788305016421",
+    "visitorId": "v_gs696va72",
+    "timestamp": "2026-09-02T20:20:14.946Z",
+    "action": "added"
+  },
+  {
+    "type": "wishlist",
+    "productId": "prod_1788295347610",
+    "visitorId": "v_gs696va72",
+    "timestamp": "2026-09-02T20:21:01.655Z",
+    "action": "removed"
+  },
+  {
+    "type": "wishlist",
+    "productId": "prod_1788305016421",
+    "visitorId": "v_gs696va72",
+    "timestamp": "2026-09-02T20:21:02.466Z",
+    "action": "removed"
+  },
+  {
+    "type": "cookie_consent",
+    "productId": "site-wide",
+    "visitorId": "v_tov83fvu2",
+    "timestamp": "2026-09-02T20:22:45.824Z"
+  },
+  {
+    "type": "wishlist",
+    "productId": "prod_1788295347610",
+    "visitorId": "v_tov83fvu2",
+    "timestamp": "2026-09-02T20:23:05.645Z",
+    "action": "removed"
+  },
+  {
+    "type": "wishlist",
+    "productId": "prod_1788295347610",
+    "visitorId": "v_tov83fvu2",
+    "timestamp": "2026-09-02T20:23:10.685Z",
+    "action": "added"
+  },
+  {
+    "type": "wishlist",
+    "productId": "prod_1788295347610",
+    "visitorId": "v_tov83fvu2",
+    "timestamp": "2026-09-02T20:23:44.627Z",
+    "action": "removed"
+  },
+  {
+    "type": "wishlist",
+    "productId": "prod_1788295347610",
+    "visitorId": "v_tov83fvu2",
+    "timestamp": "2026-09-02T20:23:48.735Z",
+    "action": "added"
+  },
+  {
+    "type": "wishlist",
+    "productId": "prod_1788295347610",
+    "visitorId": "v_gs696va72",
+    "timestamp": "2026-09-02T20:24:36.436Z",
+    "action": "added"
+  },
+  {
+    "type": "wishlist",
+    "productId": "prod_1788295347610",
+    "visitorId": "v_tov83fvu2",
+    "timestamp": "2026-09-02T20:26:18.129Z",
+    "action": "removed"
+  },
+  {
+    "type": "wishlist",
+    "productId": "prod_1788305016421",
+    "visitorId": "v_tov83fvu2",
+    "timestamp": "2026-09-02T20:26:19.594Z",
+    "action": "removed"
+  },
+  {
+    "type": "wishlist",
+    "productId": "prod_1788295347610",
+    "visitorId": "v_tov83fvu2",
+    "timestamp": "2026-09-02T20:26:21.781Z",
+    "action": "added"
+  },
+  {
+    "type": "wishlist",
+    "productId": "prod_1788305016421",
+    "visitorId": "v_tov83fvu2",
+    "timestamp": "2026-09-02T20:26:22.749Z",
+    "action": "added"
+  },
+  {
+    "type": "wishlist",
+    "productId": "prod_1788305016421",
+    "visitorId": "v_tov83fvu2",
+    "timestamp": "2026-09-02T20:30:22.616Z",
+    "action": "removed"
+  },
+  {
+    "type": "wishlist",
+    "productId": "prod_1788295347610",
+    "visitorId": "v_tov83fvu2",
+    "timestamp": "2026-09-02T20:30:23.515Z",
+    "action": "removed"
+  },
+  {
+    "type": "cookie_consent",
+    "productId": "site-wide",
+    "visitorId": "v_93y9x80yk",
+    "timestamp": "2026-09-02T20:30:36.863Z"
+  },
+  {
+    "type": "wishlist",
+    "productId": "prod_1788305016421",
+    "visitorId": "v_93y9x80yk",
+    "timestamp": "2026-09-02T20:30:42.874Z",
+    "action": "added"
+  },
+  {
+    "type": "wishlist",
+    "productId": "prod_1788295347610",
+    "visitorId": "v_93y9x80yk",
+    "timestamp": "2026-09-02T20:31:07.572Z",
+    "action": "added"
+  },
+  {
+    "type": "cookie_consent",
+    "productId": "site-wide",
+    "visitorId": "v_onsba8nc6",
+    "timestamp": "2026-09-02T20:33:08.019Z"
+  },
+  {
+    "type": "wishlist",
+    "productId": "prod_1788295347610",
+    "visitorId": "v_onsba8nc6",
+    "timestamp": "2026-09-02T20:33:09.222Z",
+    "action": "added"
+  },
+  {
+    "type": "wishlist",
+    "productId": "prod_1788305016421",
+    "visitorId": "v_onsba8nc6",
+    "timestamp": "2026-09-02T20:33:23.229Z",
+    "action": "added"
   }
 ]

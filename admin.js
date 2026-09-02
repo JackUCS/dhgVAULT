@@ -76,6 +76,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const btnResetAnalytics = document.getElementById('btnResetAnalytics');
         const inputDhgateLink = document.getElementById('inputDhgateLink');
         const inputReviewPhotos = document.getElementById('inputReviewPhotos');
+        const btnRefresh = document.getElementById('btnRefreshData');
 
         if (btnLogout) btnLogout.addEventListener('click', () => window.location.href = 'index.html');
         if (btnUnlock) btnUnlock.addEventListener('click', attemptUnlock);
@@ -90,6 +91,36 @@ document.addEventListener('DOMContentLoaded', function() {
         if (inputDhgateLink) inputDhgateLink.addEventListener('blur', autoFillPrice);
         if (inputReviewPhotos) inputReviewPhotos.addEventListener('change', previewImages);
 
+        if (btnRefresh) {
+            btnRefresh.addEventListener('click', async function() {
+                this.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refreshing...';
+                this.disabled = true;
+                try {
+                    await loadData();
+                    showToast('✅ Data refreshed!');
+                } catch (err) {
+                    console.error('Refresh failed:', err);
+                    showToast('❌ Refresh failed');
+                }
+                this.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refresh Data';
+                this.disabled = false;
+            });
+        }
+
+        // 🔥 AUTO-REFRESH every 10 seconds (ignores lock state)
+        setInterval(() => {
+            loadData().catch(err => console.warn('Auto-refresh failed:', err));
+            console.log('🔄 Auto-refreshed data at', new Date().toLocaleTimeString());
+        }, 10000); // 10 seconds
+
+        // 🔥 Refresh when user returns to tab
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                loadData().catch(err => console.warn('Refresh on focus failed:', err));
+                console.log('🔄 Refreshed data on tab focus at', new Date().toLocaleTimeString());
+            }
+        });
+
         document.querySelectorAll('.collapsible__trigger').forEach(btn => {
             btn.addEventListener('click', () => {
                 const card = btn.closest('.collapsible');
@@ -99,14 +130,59 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
+        document.querySelectorAll('.admin-section').forEach(section => {
+            const title = section.querySelector('.admin-section__title');
+            if (!title) return;
+
+            if (!title.querySelector('.toggle-icon')) {
+                title.innerHTML += ' <i class="bi bi-chevron-down toggle-icon"></i>';
+            }
+            title.style.cursor = 'pointer';
+
+            const children = Array.from(section.children).filter(child => child !== title);
+            if (children.length > 0 && !section.querySelector('.section-content')) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'section-content';
+                children.forEach(child => wrapper.appendChild(child));
+                section.appendChild(wrapper);
+            }
+
+            const icon = title.querySelector('.toggle-icon');
+
+            function toggleSection(expand) {
+                if (typeof expand === 'undefined') {
+                    section.classList.toggle('section-collapsed');
+                } else if (expand) {
+                    section.classList.remove('section-collapsed');
+                } else {
+                    section.classList.add('section-collapsed');
+                }
+                if (icon) {
+                    icon.style.transform = section.classList.contains('section-collapsed') ? 'rotate(-90deg)' : 'rotate(0deg)';
+                }
+                localStorage.setItem(`admin_section_${section.id}`, section.classList.contains('section-collapsed') ? 'collapsed' : 'expanded');
+            }
+
+            title.addEventListener('click', () => toggleSection());
+
+            const saved = localStorage.getItem(`admin_section_${section.id}`);
+            if (saved === 'collapsed') {
+                toggleSection(false);
+            } else {
+                toggleSection(true);
+            }
+        });
+
         setLocked(true);
     }
 
-    // ---------- SERVER-SYNCED PRODUCTS ----------
+    // Make loadData globally accessible for debugging
+    window.loadData = loadData;
+
     async function getProducts() {
         if (window.location.protocol.startsWith('http')) {
             try {
-                const res = await fetch('/api/products');
+                const res = await fetch('/api/products?t=' + Date.now());
                 if (res.ok) return await res.json();
             } catch (e) {
                 console.warn('Server product fetch failed, falling back to local');
@@ -143,14 +219,19 @@ document.addEventListener('DOMContentLoaded', function() {
         return false;
     }
 
-    // ---------- ANALYTICS ----------
     async function getEvents() {
         if (window.location.protocol.startsWith('http')) {
             try {
-                const res = await fetch('/api/events');
-                if (res.ok) return await res.json();
+                const url = '/api/events?t=' + Date.now() + '&r=' + Math.random();
+                console.log('📊 Fetching events from:', url);
+                const res = await fetch(url);
+                if (res.ok) {
+                    const data = await res.json();
+                    console.log('📊 Events fetched:', data.length);
+                    return data;
+                }
             } catch (e) {
-                console.warn('Server events fetch failed');
+                console.warn('Server events fetch failed:', e);
             }
         }
         return [];
@@ -159,14 +240,30 @@ document.addEventListener('DOMContentLoaded', function() {
     function calculateMetrics(events) {
         const clickMap = {};
         const viewMap = {};
+        const wishlistMap = {};
+
+        console.log('📊 Processing', events.length, 'events');
+
         events.forEach(ev => {
-            if (ev.type === 'click') clickMap[ev.productId] = (clickMap[ev.productId] || 0) + 1;
-            else if (ev.type === 'image_view') viewMap[ev.productId] = (viewMap[ev.productId] || 0) + 1;
+            if (ev.type === 'click') {
+                clickMap[ev.productId] = (clickMap[ev.productId] || 0) + 1;
+            } else if (ev.type === 'image_view') {
+                viewMap[ev.productId] = (viewMap[ev.productId] || 0) + 1;
+            } else if (ev.type === 'wishlist') {
+                // Only count added events (total wishlist adds)
+                if (ev.action === 'added') {
+                    wishlistMap[ev.productId] = (wishlistMap[ev.productId] || 0) + 1;
+                    console.log(`💖 Wishlist ADD: ${ev.productId} (total: ${wishlistMap[ev.productId]})`);
+                } else if (ev.action === 'removed') {
+                    console.log(`💖 Wishlist REMOVE: ${ev.productId} (ignored for total adds)`);
+                }
+            }
         });
-        return { clickMap, viewMap };
+
+        console.log('📊 Wishlist map (total adds):', wishlistMap);
+        return { clickMap, viewMap, wishlistMap };
     }
 
-    // ---------- POPULATE BRAND FILTER ----------
     function populateBrandFilter(products) {
         const select = document.getElementById('brandFilter');
         if (!select) return;
@@ -186,14 +283,128 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log(`✅ Brand filter populated with ${brands.length} brands.`);
     }
 
+    function renderBarChart(products, clickMap) {
+        const chart = document.getElementById('barChart');
+        const tooltip = document.getElementById('chartTooltip');
+        if (!chart) {
+            console.error('❌ Bar chart element not found!');
+            return;
+        }
+        chart.innerHTML = '';
+
+        const totalClicks = Object.values(clickMap).reduce((a, b) => a + b, 0);
+        
+        if (totalClicks === 0) {
+            chart.innerHTML = `
+                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; height:100px; color:var(--text-muted);">
+                    <i class="bi bi-bar-chart" style="font-size:2rem; margin-bottom:8px; opacity:0.4;"></i>
+                    <span>No click data yet</span>
+                    <span style="font-size:0.75rem;">Click "Shop Now" on your storefront to start tracking</span>
+                </div>
+            `;
+            return;
+        }
+
+        const max = Math.max(1, ...products.map(p => clickMap[p.id] || 0));
+
+        function updateTooltipPosition(e) {
+            if (!tooltip) return;
+            let x = e.clientX;
+            let y = e.clientY - 40;
+            
+            const tooltipRect = tooltip.getBoundingClientRect();
+            const tw = tooltipRect.width || 150;
+            const th = tooltipRect.height || 40;
+            
+            if (x + tw / 2 > window.innerWidth) {
+                x = window.innerWidth - tw / 2 - 10;
+            }
+            if (x - tw / 2 < 0) {
+                x = tw / 2 + 10;
+            }
+            if (y < 10) {
+                y = e.clientY + 20;
+            }
+            
+            tooltip.style.left = x + 'px';
+            tooltip.style.top = y + 'px';
+        }
+
+        products.slice(0, 12).forEach(p => {
+            const clicks = clickMap[p.id] || 0;
+            const bar = document.createElement('div');
+            bar.className = 'bar-chart__bar';
+            const calculatedHeight = Math.max(12, (clicks / max) * 120);
+            bar.style.height = calculatedHeight + 'px';
+            bar.style.minHeight = '12px';
+            bar.style.background = 'linear-gradient(to top, var(--accent), var(--accent-2))';
+            bar.style.borderRadius = '6px 6px 0 0';
+            bar.style.boxShadow = '0 0 8px rgba(99,102,241,0.15)';
+            bar.style.width = '100%';
+            bar.style.cursor = 'pointer';
+            bar.style.position = 'relative';
+            bar.setAttribute('data-clicks', clicks);
+            bar.setAttribute('data-title', p.title);
+
+            bar.addEventListener('mouseenter', function(e) {
+                if (tooltip) {
+                    tooltip.textContent = `${p.title}: ${clicks} clicks`;
+                    tooltip.classList.add('visible');
+                    tooltip.style.display = 'block';
+                    updateTooltipPosition(e);
+                }
+            });
+
+            bar.addEventListener('mousemove', function(e) {
+                if (tooltip && tooltip.classList.contains('visible')) {
+                    updateTooltipPosition(e);
+                }
+            });
+
+            bar.addEventListener('mouseleave', function() {
+                if (tooltip) {
+                    tooltip.classList.remove('visible');
+                    tooltip.style.display = 'none';
+                }
+            });
+
+            const label = document.createElement('div');
+            label.className = 'bar-chart__label';
+            label.textContent = p.title.substr(0, 8);
+            label.style.textAlign = 'center';
+            label.style.fontSize = '0.6rem';
+            label.style.color = 'var(--text-muted)';
+            label.style.marginTop = '4px';
+
+            const wrap = document.createElement('div');
+            wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;flex:1;min-width:20px;';
+            wrap.appendChild(bar);
+            wrap.appendChild(label);
+            chart.appendChild(wrap);
+        });
+    }
+
     async function loadData() {
+        console.log('🔄 Loading data...');
         const products = await getProducts();
         const events = await getEvents();
-        const { clickMap, viewMap } = calculateMetrics(events);
+        const { clickMap, viewMap, wishlistMap } = calculateMetrics(events);
+
+        console.log(`📊 Loaded ${products.length} products, ${events.length} events`);
+        console.log('📊 Wishlist data:', wishlistMap);
 
         document.getElementById('adminTotalProducts').textContent = products.length;
         document.getElementById('adminTotalClicks').textContent = Object.values(clickMap).reduce((s, c) => s + c, 0);
         document.getElementById('adminTotalViews').textContent = Object.values(viewMap).reduce((s, c) => s + c, 0);
+
+        const totalWishlists = Object.values(wishlistMap).reduce((sum, val) => sum + val, 0);
+        const wishlistStatEl = document.getElementById('adminTotalWishlists');
+        if (wishlistStatEl) {
+            wishlistStatEl.textContent = totalWishlists;
+            console.log(`💖 Total Wishlist Adds: ${totalWishlists}`);
+        } else {
+            console.log(`💖 Total Wishlist Adds: ${totalWishlists}`);
+        }
 
         let top = '—', topC = 0;
         products.forEach(p => {
@@ -203,59 +414,25 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('adminTopProduct').textContent = top;
 
         renderBarChart(products, clickMap);
-
         populateBrandFilter(products);
 
         const brandFilter = document.getElementById('brandFilter');
         if (brandFilter) {
             brandFilter.onchange = function() {
-                renderTable(products, clickMap);
+                renderTable(products, clickMap, wishlistMap);
             };
         }
 
-        renderTable(products, clickMap);
+        renderTable(products, clickMap, wishlistMap);
 
         const creds = JSON.parse(localStorage.getItem(STORAGE_VAULT_CREDS) || '{}');
         if (creds.username) document.getElementById('vaultUsernameInput').value = creds.username;
+        
+        console.log('✅ Data loaded successfully');
+        return true;
     }
 
-    function renderBarChart(products, clickMap) {
-        const chart = document.getElementById('barChart');
-        if (!chart) return;
-        chart.innerHTML = '';
-        const tooltip = document.getElementById('chartTooltip');
-        const max = Math.max(1, ...products.map(p => clickMap[p.id] || 0));
-        products.slice(0, 12).forEach(p => {
-            const clicks = clickMap[p.id] || 0;
-            const bar = document.createElement('div');
-            bar.className = 'bar-chart__bar';
-            const calculatedHeight = Math.max(8, (clicks / max) * 110);
-            bar.style.height = calculatedHeight + 'px';
-            bar.setAttribute('data-clicks', clicks);
-            bar.setAttribute('data-title', p.title);
-            bar.addEventListener('mouseenter', () => {
-                if (tooltip) {
-                    tooltip.textContent = `${p.title}: ${clicks} clicks`;
-                    tooltip.style.display = 'block';
-                    const rect = bar.getBoundingClientRect();
-                    tooltip.style.left = rect.left + rect.width / 2 + 'px';
-                    tooltip.style.top = rect.top - 30 + 'px';
-                }
-            });
-            bar.addEventListener('mouseleave', () => { if (tooltip) tooltip.style.display = 'none'; });
-            const label = document.createElement('div');
-            label.className = 'bar-chart__label';
-            label.textContent = p.title.substr(0, 8);
-            const wrap = document.createElement('div');
-            wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;flex:1;';
-            wrap.appendChild(bar);
-            wrap.appendChild(label);
-            chart.appendChild(wrap);
-        });
-    }
-
-    // ---------- TABLE RENDER WITH BRAND FILTER ----------
-    function renderTable(products, clickMap) {
+    function renderTable(products, clickMap, wishlistMap) {
         const tbody = document.getElementById('adminTableBody');
         if (!tbody) return;
 
@@ -272,6 +449,7 @@ document.addEventListener('DOMContentLoaded', function() {
         tbody.innerHTML = '';
         sorted.forEach(p => {
             const clicks = clickMap[p.id] || 0;
+            const wishlists = wishlistMap[p.id] || 0;
             const priority = clicks >= 10 ? '🔥 High' : clicks >= 4 ? '⭐ Medium' : 'Low';
             const disabledAttr = isUnlocked ? '' : 'disabled';
 
@@ -279,7 +457,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 <td>${p.title.substr(0, 30)}</td>
                 <td>${p.category}</td>
                 <td>${p.brand || '—'}</td>
-                <td>${clicks}</td>
+                <td><strong>${clicks}</strong></td>
+                <td><strong>${wishlists}</strong></td>
                 <td>${priority}</td>
                 <td>
                     <button class="btn btn--ghost btn--sm" onclick="editProduct('${p.id}')" ${disabledAttr} title="Edit"><i class="bi bi-pencil"></i></button>
@@ -292,12 +471,32 @@ document.addEventListener('DOMContentLoaded', function() {
     async function handleAddProduct(e) {
         e.preventDefault();
         if (!isUnlocked) return;
-        const files = document.getElementById('inputReviewPhotos')?.files || [];
-        const reviewImages = [];
-        for (let f of files) {
-            const b64 = await new Promise(r => { const rd = new FileReader(); rd.onload = () => r(rd.result); rd.readAsDataURL(f); });
-            reviewImages.push(b64);
+
+        let existingProduct = null;
+        if (editingId) {
+            const products = await getProducts();
+            existingProduct = products.find(p => p.id === editingId);
         }
+
+        const files = document.getElementById('inputReviewPhotos')?.files || [];
+        let reviewImages = existingProduct?.reviewImages || [];
+        
+        if (files.length > 0) {
+            const newImages = [];
+            for (let f of files) {
+                const b64 = await new Promise(r => { 
+                    const rd = new FileReader(); 
+                    rd.onload = () => r(rd.result); 
+                    rd.readAsDataURL(f); 
+                });
+                newImages.push(b64);
+            }
+            reviewImages = newImages;
+        }
+
+        const brandValue = document.getElementById('inputBrand').value.trim();
+        console.log(`🏷️ Saving brand: "${brandValue}" for product ${editingId || 'new'}`);
+
         const productData = {
             dhgateLink: document.getElementById('inputDhgateLink').value,
             thumbnailUrl: document.getElementById('inputThumbnailUrl').value,
@@ -305,15 +504,21 @@ document.addEventListener('DOMContentLoaded', function() {
             price: document.getElementById('inputPrice').value,
             affiliateLink: document.getElementById('inputAffiliateLink').value,
             category: document.getElementById('inputCategory').value,
-            brand: document.getElementById('inputBrand').value,
+            brand: brandValue,
             rating: document.getElementById('inputRating').value,
-            reviewImages: reviewImages.length ? reviewImages : undefined,
-            createdAt: new Date().toISOString()
+            reviewImages: reviewImages,
+            createdAt: existingProduct?.createdAt || new Date().toISOString()
         };
 
         const product = { id: editingId || 'prod_' + Date.now(), ...productData };
 
-        await upsertProductToServer(product);
+        console.log('📦 Saving product:', product);
+
+        const serverSuccess = await upsertProductToServer(product);
+
+        if (!serverSuccess) {
+            console.warn('⚠️ Server save may have failed, but continuing with local cache');
+        }
 
         const localProduct = { ...product };
         delete localProduct.reviewImages;
@@ -321,8 +526,11 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             let products = JSON.parse(localStorage.getItem(STORAGE_PRODUCTS) || '[]');
             const idx = products.findIndex(p => p.id === localProduct.id);
-            if (idx >= 0) products[idx] = localProduct;
-            else products.unshift(localProduct);
+            if (idx >= 0) {
+                products[idx] = localProduct;
+            } else {
+                products.unshift(localProduct);
+            }
             localStorage.setItem(STORAGE_PRODUCTS, JSON.stringify(products));
         } catch (err) {
             console.warn('Local product cache skipped (quota?)');
@@ -355,7 +563,11 @@ document.addEventListener('DOMContentLoaded', function() {
         container.innerHTML = '';
         for (let f of this.files) {
             const r = new FileReader();
-            r.onload = e => { const img = document.createElement('img'); img.src = e.target.result; container.appendChild(img); };
+            r.onload = e => { 
+                const img = document.createElement('img'); 
+                img.src = e.target.result; 
+                container.appendChild(img); 
+            };
             r.readAsDataURL(f);
         }
     }
@@ -400,6 +612,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const products = await getProducts();
         const product = products.find(p => p.id === id);
         if (!product) return showToast('Product not found');
+        
         editingId = id;
         document.getElementById('inputDhgateLink').value = product.dhgateLink || '';
         document.getElementById('inputThumbnailUrl').value = product.thumbnailUrl || '';
@@ -409,14 +622,30 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('inputCategory').value = product.category || 'shirts';
         document.getElementById('inputBrand').value = product.brand || '';
         document.getElementById('inputRating').value = product.rating || 4.5;
-        document.getElementById('reviewPreviews').innerHTML = (product.reviewImages || []).map(img => `<img src="${img}" alt="review">`).join('');
+        
+        const reviewContainer = document.getElementById('reviewPreviews');
+        if (reviewContainer) {
+            if (product.reviewImages && product.reviewImages.length > 0) {
+                reviewContainer.innerHTML = product.reviewImages.map(img => 
+                    `<img src="${img}" alt="review" style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--glass-border);">`
+                ).join('');
+                reviewContainer.innerHTML += `<div style="font-size:0.7rem;color:var(--text-muted);width:100%;margin-top:4px;">${product.reviewImages.length} existing image(s). Upload new ones to replace.</div>`;
+            } else {
+                reviewContainer.innerHTML = '';
+            }
+        }
+        
         const submitBtn = document.querySelector('#addProductForm button[type="submit"]');
         submitBtn.innerHTML = '<i class="bi bi-pencil-square"></i> Update Product';
+        
         const collapsible = document.querySelector('.collapsible');
         if (collapsible && !collapsible.classList.contains('collapsible--open')) {
             collapsible.querySelector('.collapsible__trigger').click();
         }
+        
         window.scrollTo({ top: document.getElementById('addProductForm').offsetTop - 100, behavior: 'smooth' });
+        
+        console.log(`✏️ Editing product: "${product.title}" with brand "${product.brand}" and ${product.reviewImages?.length || 0} images`);
     };
 
     init();

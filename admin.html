@@ -72,6 +72,11 @@
                         <div class="admin-stat-value" id="adminTopProduct">—</div>
                         <div class="admin-stat-label">Top Product</div>
                     </div>
+                    <div class="admin-stat-card">
+                        <i class="bi bi-heart-fill admin-stat-icon"></i>
+                        <div class="admin-stat-value" id="adminTotalWishlists">0</div>
+                        <div class="admin-stat-label">Total Wishlists</div>
+                    </div>
                 </div>
             </section>
 
@@ -168,8 +173,9 @@
                 <div class="admin-card">
                     <div class="bar-chart-wrapper">
                         <div class="bar-chart" id="barChart"></div>
-                        <div class="bar-chart-tooltip" id="chartTooltip" style="display:none;"></div>
                     </div>
+                    <!-- ✅ Tooltip is now correctly outside the wrapper -->
+                    <div class="bar-chart-tooltip" id="chartTooltip" style="display:none;"></div>
                 </div>
             </section>
 
@@ -192,6 +198,7 @@
                                     <th>Category</th>
                                     <th>Brand</th>
                                     <th>Clicks</th>
+                                    <th>Wishlists</th>
                                     <th>Priority</th>
                                     <th style="width:100px;">Actions</th>
                                 </tr>
@@ -202,12 +209,18 @@
                 </div>
             </section>
 
-            <button class="btn btn--ghost btn--sm" id="btnResetAnalytics" disabled style="color:var(--danger); margin-top:16px;">
-                <i class="bi bi-arrow-counterclockwise"></i> Reset Analytics
-            </button>
+            <!-- 🔥 BUTTONS: Refresh + Reset -->
+            <div style="display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;">
+                <button class="btn btn--ghost btn--sm" id="btnRefreshData" style="color:var(--accent-3);">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh Data
+                </button>
+                <button class="btn btn--ghost btn--sm" id="btnResetAnalytics" disabled style="color:var(--danger);">
+                    <i class="bi bi-arrow-counterclockwise"></i> Reset Analytics
+                </button>
+            </div>
         </main>
     </div>
 
-    <script src="admin.min.js"></script>
+    <script src="admin.min.js?v=2027"></script>
 </body>
 </html>

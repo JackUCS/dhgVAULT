@@ -22,6 +22,25 @@ function getVisitorId() {
     return id;
 }
 
+// ---------- ⭐ Generate star HTML based on rating ----------
+function getStarsHTML(rating) {
+    const fullStars = Math.floor(rating);
+    const halfStar = rating % 1 >= 0.5 ? 1 : 0;
+    const emptyStars = 5 - fullStars - halfStar;
+    
+    let stars = '';
+    for (let i = 0; i < fullStars; i++) {
+        stars += '<i class="bi bi-star-fill" style="font-size:0.8rem;"></i>';
+    }
+    if (halfStar) {
+        stars += '<i class="bi bi-star-half" style="font-size:0.8rem;"></i>';
+    }
+    for (let i = 0; i < emptyStars; i++) {
+        stars += '<i class="bi bi-star" style="font-size:0.8rem;"></i>';
+    }
+    return stars;
+}
+
 // ---------- safety wrapper ----------
 document.addEventListener('DOMContentLoaded', function () {
     'use strict';
@@ -72,7 +91,6 @@ document.addEventListener('DOMContentLoaded', function () {
     async function getProducts() {
         if (window.location.protocol.startsWith('http')) {
             try {
-                // 🔥 ADDED CACHE-BUSTING QUERY PARAMETER
                 const res = await fetch('/api/products?t=' + Date.now());
                 if (res.ok) return await res.json();
             } catch (e) {
@@ -90,7 +108,7 @@ document.addEventListener('DOMContentLoaded', function () {
         localStorage.setItem(STORAGE_VIEWS, v);
     }
 
-    // ----- Enhanced Analytics Tracking (consent‑aware) -----
+    // 🔥 IMPROVED: Enhanced Analytics Tracking with more logging
     function recordEvent(type, productId, meta = {}) {
         const visitorId = getVisitorId();
         const event = {
@@ -101,15 +119,32 @@ document.addEventListener('DOMContentLoaded', function () {
             ...meta,
         };
         eventBuffer.push(event);
+        
+        console.log(`📊 [${type}] Event for ${productId}:`, event);
 
-        // Only send if consent given (or no banner present, e.g., admin)
-        if (window.location.protocol.startsWith('http') && (hasConsent() || !document.getElementById('cookieConsent'))) {
+        // Check if consent is given
+        const consentGiven = hasConsent() || !document.getElementById('cookieConsent');
+        console.log(`📊 Consent given: ${consentGiven}`);
+
+        if (window.location.protocol.startsWith('http') && consentGiven) {
             fetch('/api/event', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(event),
                 keepalive: true,
-            }).catch(() => {});
+            })
+            .then(res => {
+                if (res.ok) {
+                    console.log(`✅ Event sent successfully: ${type} for ${productId}`);
+                } else {
+                    console.warn(`⚠️ Event send returned ${res.status}: ${type} for ${productId}`);
+                }
+            })
+            .catch(err => {
+                console.warn('❌ Event send failed:', err);
+            });
+        } else {
+            console.log(`⏳ Event queued (no consent yet or not on server): ${type} for ${productId}`);
         }
     }
 
@@ -121,12 +156,25 @@ document.addEventListener('DOMContentLoaded', function () {
         localStorage.setItem(STORAGE_WISHLIST, JSON.stringify(wishlist));
     }
     function toggleWishlist(productId) {
+        console.log(`💖 toggleWishlist called for ${productId}`);
         let wishlist = getWishlist();
         const idx = wishlist.indexOf(productId);
-        if (idx >= 0) wishlist.splice(idx, 1);
-        else wishlist.push(productId);
+        let action = '';
+        if (idx >= 0) {
+            wishlist.splice(idx, 1);
+            action = 'removed';
+            console.log(`💖 Removed from wishlist: ${productId}`);
+        } else {
+            wishlist.push(productId);
+            action = 'added';
+            console.log(`💖 Added to wishlist: ${productId}`);
+        }
         saveWishlist(wishlist);
         updateWishlistButtons();
+
+        // 📊 Send tracking event
+        console.log(`💖 Sending wishlist event: ${action} for ${productId}`);
+        recordEvent('wishlist', productId, { action: action });
     }
     window.toggleWishlist = toggleWishlist;
 
@@ -219,7 +267,7 @@ document.addEventListener('DOMContentLoaded', function () {
         updateBrandSidebar(products, filter);
     }
 
-    // ---------- UPDATED createCard() WITH BRAND ----------
+    // ---------- createCard() WITH VISUAL STARS ----------
     function createCard(p) {
         const card = document.createElement('div');
         card.className = 'product-card';
@@ -249,11 +297,13 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>
             <div class="product-card__body">
                 <div class="product-card__title">${escapeHTML(p.title)}</div>
-                <!-- 👇 BRAND DISPLAY (added here) -->
                 <div class="product-card__brand" style="font-size:0.85rem; color:var(--text-muted); margin-top:-4px; margin-bottom:2px;">${escapeHTML(p.brand || '')}</div>
                 <div class="product-card__meta">
                     <span class="product-card__price" data-usd-price="${parseFloat(p.price).toFixed(2)}" style="min-width:70px;display:inline-block;">$${parseFloat(p.price).toFixed(2)}</span>
-                    <span style="color:var(--warning);"><i class="bi bi-star-fill"></i> ${p.rating || 4.5}</span>
+                    <span style="color:var(--warning); display:flex; align-items:center; gap:4px;">
+                        ${getStarsHTML(p.rating || 4.5)}
+                        <span style="font-size:0.8rem; opacity:0.7;">${p.rating || 4.5}</span>
+                    </span>
                 </div>
                 <div class="product-card__actions">
                     <a href="${escapeHTML(p.affiliateLink)}" class="product-card__affiliate-btn"
@@ -458,16 +508,16 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // ---------- start everything (fixed init order) ----------
+    // ---------- start everything ----------
     incrementPageViews();
     initCurrency().then(() => {
         return renderProducts();
     }).then(() => {
-        console.log('🚀 Storefront ready – brand names now show on cards!');
+        console.log('🚀 Storefront ready – visual star ratings active!');
     });
 });
 
-// Enhanced Cookie consent (sets actual cookie + sends event)
+// Enhanced Cookie consent
 document.addEventListener('DOMContentLoaded', () => {
     const banner = document.getElementById('cookieConsent');
     const acceptBtn = document.getElementById('cookieAccept');

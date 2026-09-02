@@ -1568,21 +1568,50 @@ html[data-theme="light"] .toast {
 }
 
 /* ===========================
-   LIGHT MODE – SHOP NOW BUTTON
+   LIGHT MODE – SHOP NOW BUTTON (Upgraded)
    =========================== */
 [data-theme="light"] .product-card__affiliate-btn {
     background: linear-gradient(135deg, #ff2d78, #ff6eb0);
+    background-size: 200% 200%;
     color: #fff;
     font-weight: 600;
-    border: 1px solid rgba(255, 255, 255, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.3);
     box-shadow: 0 4px 16px rgba(255, 45, 120, 0.25);
-    transition: all 0.25s ease;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
 }
 
 [data-theme="light"] .product-card__affiliate-btn:hover {
-    background: linear-gradient(135deg, #ff6eb0, #ff2d78);
-    box-shadow: 0 6px 22px rgba(255, 45, 120, 0.4);
-    transform: translateY(-2px);
+    /* Override the default rainbow ping-pong with an elegant pink-lavender flow */
+    background-image: linear-gradient(135deg, #ff2d78, #ff6eb0, #c6a8e8) !important;
+    background-size: 300% 300% !important;
+    animation: lightGradientFlow 2.5s ease-in-out infinite alternate !important;
+    box-shadow: 0 8px 28px rgba(255, 45, 120, 0.45) !important;
+    transform: translateY(-2px) scale(1.03) !important;
+    border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Gentle shimmer animation */
+@keyframes lightGradientFlow {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 100% 50%; }
+}
+
+/* Optional: subtle inner glow on hover */
+[data-theme="light"] .product-card__affiliate-btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(120deg, transparent, rgba(255,255,255,0.2), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.6s ease;
+    pointer-events: none;
+}
+
+[data-theme="light"] .product-card__affiliate-btn:hover::after {
+    transform: translateX(100%);
 }
 
 /* ===========================
@@ -2191,4 +2220,57 @@ html[data-theme="light"] .toast {
         animation: none !important;
         background-position: 0% 50% !important;
     }
+}
+
+/* ===========================
+   ADMIN SECTION COLLAPSIBLE
+   =========================== */
+.admin-section .section-content {
+    display: block;
+    transition: opacity 0.25s ease;
+}
+
+.admin-section.section-collapsed .section-content {
+    display: none;
+}
+
+.admin-section .admin-section__title .toggle-icon {
+    transition: transform 0.3s ease;
+    display: inline-block;
+    margin-left: 6px;
+}
+
+.admin-section.section-collapsed .admin-section__title .toggle-icon {
+    transform: rotate(-90deg);
+}
+
+
+/* ===========================
+   BAR CHART TOOLTIP FIX
+   =========================== */
+.bar-chart-tooltip {
+    position: fixed;
+    background: var(--bg-secondary);
+    border: 1px solid var(--glass-border);
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    pointer-events: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    white-space: nowrap;
+    z-index: 500;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.bar-chart-tooltip.visible {
+    opacity: 1;
+}
+
+[data-theme="light"] .bar-chart-tooltip {
+    background: #ffffff;
+    border-color: rgba(0,0,0,0.1);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    color: #1f2035;
 }
