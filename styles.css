@@ -2139,3 +2139,56 @@ html[data-theme="light"] .toast {
     display: inline-block;
     text-align: left;
 }
+
+/* ===========================
+   PURCHASE BUTTON – GENTLE PING‑PONG GRADIENT
+   =========================== */
+.product-card__affiliate-btn {
+    position: relative;
+    overflow: hidden;
+    background-size: 400% 400% !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    will-change: background-position, transform;
+}
+
+.product-card__affiliate-btn:hover {
+    transform: scale(1.06) !important;
+    background-image: linear-gradient(
+        135deg,
+        #818cf8,
+        #a78bfa,
+        #ff2d78,
+        #38bdf8,
+        #818cf8
+    ) !important;
+    animation: gradientPingPong 2.5s ease-in-out infinite alternate !important;
+    box-shadow: 0 8px 28px rgba(99, 102, 241, 0.6) !important;
+}
+
+@keyframes gradientPingPong {
+    0%   { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+}
+
+/* Light mode – refined pink‑dominant blend */
+[data-theme="light"] .product-card__affiliate-btn:hover {
+    background-image: linear-gradient(
+        135deg,
+        #ff2d78,      /* rich pink */
+        #ff5e9d,      /* lighter pink */
+        #f7a6c8,      /* soft blush */
+        #c6a8e8,      /* lavender */
+        #9a8cf0,      /* soft purple */
+        #6c7ae0,      /* periwinkle blue */
+        #ff2d78       /* back to pink for seamless loop */
+    ) !important;
+    box-shadow: 0 8px 28px rgba(255, 45, 120, 0.5) !important;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .product-card__affiliate-btn:hover {
+        animation: none !important;
+        background-position: 0% 50% !important;
+    }
+}
