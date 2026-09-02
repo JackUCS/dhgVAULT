@@ -69,7 +69,6 @@ function sendEvent(event) {
 function flushPendingEvents() {
     if (pendingEvents.length) {
         console.log(`🔄 Sending ${pendingEvents.length} queued events...`);
-        // Make a copy to avoid issues if new events are added during flush
         const eventsToSend = pendingEvents.slice();
         pendingEvents = [];
         eventsToSend.forEach(ev => sendEvent(ev));
@@ -143,7 +142,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const v = (parseInt(localStorage.getItem(STORAGE_VIEWS)) || 0) + 1;
         localStorage.setItem(STORAGE_VIEWS, v);
         
-        // 📊 Send page view event – uses the global sendEvent
         const visitorId = getVisitorId();
         const event = {
             type: 'page_view',
@@ -286,7 +284,7 @@ document.addEventListener('DOMContentLoaded', function () {
         updateBrandSidebar(products, filter);
     }
 
-    // ---------- createCard() WITH VISUAL STARS ----------
+    // ---------- createCard() WITH VISUAL STARS & lazy loading ----------
     function createCard(p) {
         const card = document.createElement('div');
         card.className = 'product-card';
@@ -296,6 +294,7 @@ document.addEventListener('DOMContentLoaded', function () {
             `<img class="product-card__review-thumb" src="${escapeHTML(img)}"
                 alt="${escapeHTML(p.title)} review photo"
                 width="44" height="44"
+                loading="lazy"
                 onclick="event.stopPropagation(); window.openLightbox('${escapeHTML(img)}')"
                 onerror="this.style.display='none'">`
         ).join('');
@@ -304,6 +303,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <div class="product-card__image-wrap">
                 <img class="product-card__main-img" src="${escapeHTML(p.thumbnailUrl)}" alt="${escapeHTML(p.title)}"
                      width="300" height="300"
+                     loading="lazy"
                      onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22300%22><rect fill=%22%231a1a2e%22 width=%22300%22 height=%22300%22/><text fill=%22%23666%22 x=%2250%25%22 y=%2250%25%22 dy=%22.3em%22>Image</text></svg>'">
                 <div class="product-card__dhgate-badge"><i class="bi bi-diamond-fill"></i> DHGate</div>
                 <button class="product-card__wishlist-btn" data-product-id="${p.id}" aria-label="Add to wishlist" onclick="event.stopPropagation(); toggleWishlist('${p.id}')">
@@ -544,8 +544,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (banner) {
         if (hasConsent()) {
             banner.style.display = 'none';
-            // If consent already given, flush any pending events
-            setTimeout(flushPendingEvents, 500); // small delay to ensure other scripts run
+            setTimeout(flushPendingEvents, 500);
         }
 
         acceptBtn?.addEventListener('click', () => {
@@ -553,7 +552,6 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('cookie_consent', 'true');
             banner.style.display = 'none';
 
-            // Send the cookie consent event
             fetch('/api/event', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -565,11 +563,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 })
             }).then(() => {
                 console.log('✅ Cookie consent accepted – event sent');
-                // After consent is accepted, flush all pending events
                 flushPendingEvents();
             }).catch(err => {
                 console.warn('Cookie consent event not sent:', err);
-                // Still flush pending events even if consent event fails
                 flushPendingEvents();
             });
         });

@@ -39,5 +39,19 @@
     "visitorId": "v_cm85mscku",
     "timestamp": "2026-09-02T22:54:49.369Z",
     "link": "https://sale.dhgate.com/uLXpSK33"
+  },
+  {
+    "type": "page_view",
+    "productId": "site-wide",
+    "visitorId": "v_cm85mscku",
+    "timestamp": "2026-09-02T23:08:50.414Z",
+    "count": 2
+  },
+  {
+    "type": "page_view",
+    "productId": "site-wide",
+    "visitorId": "v_cm85mscku",
+    "timestamp": "2026-09-02T23:09:01.944Z",
+    "count": 3
   }
 ]
