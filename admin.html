@@ -15,18 +15,6 @@
     <div class="grid-overlay"></div>
     <div class="toast-container" id="toastContainer"></div>
 
-    <!-- Lock overlay -->
-    <div id="adminLockOverlay" class="admin-lock">
-        <div class="admin-lock__card">
-            <h2><i class="bi bi-shield-lock-fill"></i> Admin Locked</h2>
-            <p>Enter your admin credentials to make changes.</p>
-            <input type="text" id="adminUnlockUsername" placeholder="Username" class="form-group-input">
-            <input type="password" id="adminUnlockPassword" placeholder="Password" class="form-group-input">
-            <button id="btnUnlockAdmin" class="btn btn--primary btn--full">Unlock Admin</button>
-            <p id="unlockError" style="color:var(--danger); margin-top:8px; display:none;">Invalid username or password</p>
-        </div>
-    </div>
-
     <!-- Main admin dashboard -->
     <div class="admin-dashboard">
         <!-- Sidebar -->
@@ -88,31 +76,31 @@
                         <div class="form-row">
                             <div class="form-group">
                                 <label>DHGate Link</label>
-                                <input type="url" id="inputDhgateLink" required disabled>
+                                <input type="url" id="inputDhgateLink" required>
                             </div>
                             <div class="form-group">
                                 <label>Thumbnail URL</label>
-                                <input type="url" id="inputThumbnailUrl" required disabled>
+                                <input type="url" id="inputThumbnailUrl" required>
                             </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Title</label>
-                                <input type="text" id="inputTitle" required disabled>
+                                <input type="text" id="inputTitle" required>
                             </div>
                             <div class="form-group">
                                 <label>Price (USD)</label>
-                                <input type="text" id="inputPrice" required disabled>
+                                <input type="text" id="inputPrice" required>
                             </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Affiliate Link</label>
-                                <input type="url" id="inputAffiliateLink" required disabled>
+                                <input type="url" id="inputAffiliateLink" required>
                             </div>
                             <div class="form-group">
                                 <label>Category</label>
-                                <select id="inputCategory" disabled>
+                                <select id="inputCategory">
                                     <option value="shirts">Shirts</option>
                                     <option value="pants">Pants</option>
                                     <option value="joggers">Joggers</option>
@@ -126,21 +114,21 @@
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Brand</label>
-                                <input type="text" id="inputBrand" placeholder="e.g. Nike, Adidas" disabled>
+                                <input type="text" id="inputBrand" placeholder="e.g. Nike, Adidas">
                             </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Rating</label>
-                                <input type="number" id="inputRating" min="1" max="5" step="0.5" value="4.5" disabled>
+                                <input type="number" id="inputRating" min="1" max="5" step="0.5" value="4.5">
                             </div>
                             <div class="form-group">
                                 <label>Review Photos</label>
-                                <input type="file" id="inputReviewPhotos" accept="image/*" multiple disabled>
+                                <input type="file" id="inputReviewPhotos" accept="image/*" multiple>
                             </div>
                         </div>
                         <div class="review-previews" id="reviewPreviews"></div>
-                        <button type="submit" class="btn btn--primary btn--full" disabled>
+                        <button type="submit" class="btn btn--primary btn--full">
                             <i class="bi bi-cloud-upload"></i> Add Product
                         </button>
                     </form>
@@ -154,14 +142,14 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>Username</label>
-                            <input type="text" id="vaultUsernameInput" placeholder="Set a username" disabled>
+                            <input type="text" id="vaultUsernameInput" placeholder="Set a username">
                         </div>
                         <div class="form-group">
                             <label>Password</label>
-                            <input type="password" id="vaultPasswordInput" placeholder="Set a password" disabled>
+                            <input type="password" id="vaultPasswordInput" placeholder="Set a password">
                         </div>
                     </div>
-                    <button class="btn btn--primary btn--sm" id="btnSaveVaultCreds" disabled>
+                    <button class="btn btn--primary btn--sm" id="btnSaveVaultCreds">
                         <i class="bi bi-save"></i> Save Credentials
                     </button>
                 </div>
@@ -174,7 +162,6 @@
                     <div class="bar-chart-wrapper">
                         <div class="bar-chart" id="barChart"></div>
                     </div>
-                    <!-- ✅ Tooltip is now correctly outside the wrapper -->
                     <div class="bar-chart-tooltip" id="chartTooltip" style="display:none;"></div>
                 </div>
             </section>
@@ -209,18 +196,19 @@
                 </div>
             </section>
 
-            <!-- 🔥 BUTTONS: Refresh + Reset -->
+            <!-- Buttons -->
             <div style="display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;">
                 <button class="btn btn--ghost btn--sm" id="btnRefreshData" style="color:var(--accent-3);">
                     <i class="bi bi-arrow-clockwise"></i> Refresh Data
                 </button>
-                <button class="btn btn--ghost btn--sm" id="btnResetAnalytics" disabled style="color:var(--danger);">
+                <button class="btn btn--ghost btn--sm" id="btnResetAnalytics" style="color:var(--danger);">
                     <i class="bi bi-arrow-counterclockwise"></i> Reset Analytics
                 </button>
             </div>
         </main>
     </div>
 
+    <!-- 🔥 CACHE BUST: changed version to 2027 -->
     <script src="admin.min.js?v=2027"></script>
 </body>
 </html>

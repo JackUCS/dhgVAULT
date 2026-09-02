@@ -997,45 +997,6 @@ body {
     transform: translate(-50%, -100%);
     z-index: 500;
 }
-.admin-lock {
-    position: fixed;
-    inset: 0;
-    z-index: 999;
-    background: rgba(0,0,0,0.7);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.admin-lock__card {
-    background: var(--bg-secondary);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius-lg);
-    padding: 40px;
-    text-align: center;
-    max-width: 400px;
-    width: 90%;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-}
-.admin-lock__card h2 {
-    font-size: 1.4rem;
-    margin-bottom: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-}
-.admin-lock__card input {
-    margin: 10px 0;
-    width: 100%;
-    padding: 12px;
-    border-radius: var(--radius-sm);
-    background: var(--surface);
-    border: 1px solid var(--glass-border);
-    color: #fff;
-    font-family: var(--font);
-}
 
 /* ===========================
    MODAL & LIGHTBOX

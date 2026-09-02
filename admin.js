@@ -5,11 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const STORAGE_VAULT_CREDS = 'dhgatevault_vault_creds';
     const STORAGE_EVENTS = 'dhgatevault_events';
 
-    const ADMIN_USERNAME = 'EncryptedID';
-    const ADMIN_PASS_HASH = '790ca82fe39898705aa8d1a53fda65a0480b649f6d841f4d0ebaa711e979c9ea';
-
     const $toast = document.getElementById('toastContainer');
-    let isUnlocked = false;
     let editingId = null;
 
     function showToast(msg) {
@@ -27,50 +23,8 @@ document.addEventListener('DOMContentLoaded', function() {
         return Array.from(new Uint8Array(d)).map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
-    function setLocked(locked) {
-        isUnlocked = !locked;
-        const inputs = document.querySelectorAll('#addProductForm input, #addProductForm select, #addProductForm textarea, #addProductForm button[type="submit"], #btnSaveVaultCreds, #btnResetAnalytics, .btn--danger');
-        inputs.forEach(el => el.disabled = locked);
-        const overlay = document.getElementById('adminLockOverlay');
-        if (overlay) overlay.style.display = locked ? 'flex' : 'none';
-        if (!locked) loadData();
-    }
-
-    async function attemptUnlock() {
-        const userInput = document.getElementById('adminUnlockUsername');
-        const passInput = document.getElementById('adminUnlockPassword');
-        const errorMsg = document.getElementById('unlockError');
-
-        if (!userInput || !passInput) {
-            console.error('Missing username or password input');
-            return;
-        }
-
-        const user = userInput.value.trim();
-        const pw = passInput.value;
-        if (!user || !pw) return;
-
-        if (user !== ADMIN_USERNAME) {
-            if (errorMsg) errorMsg.style.display = 'block';
-            return;
-        }
-
-        const hash = await hashPassword(pw);
-        if (hash === ADMIN_PASS_HASH) {
-            setLocked(false);
-            if (errorMsg) errorMsg.style.display = 'none';
-            userInput.value = '';
-            passInput.value = '';
-        } else {
-            if (errorMsg) errorMsg.style.display = 'block';
-        }
-    }
-
     function init() {
         const btnLogout = document.getElementById('btnLogout');
-        const btnUnlock = document.getElementById('btnUnlockAdmin');
-        const usernameInput = document.getElementById('adminUnlockUsername');
-        const passwordInput = document.getElementById('adminUnlockPassword');
         const addForm = document.getElementById('addProductForm');
         const btnSaveVault = document.getElementById('btnSaveVaultCreds');
         const btnResetAnalytics = document.getElementById('btnResetAnalytics');
@@ -79,9 +33,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const btnRefresh = document.getElementById('btnRefreshData');
 
         if (btnLogout) btnLogout.addEventListener('click', () => window.location.href = 'index.html');
-        if (btnUnlock) btnUnlock.addEventListener('click', attemptUnlock);
-        if (usernameInput) usernameInput.addEventListener('keypress', e => { if (e.key === 'Enter') passwordInput?.focus(); });
-        if (passwordInput) passwordInput.addEventListener('keypress', e => { if (e.key === 'Enter') attemptUnlock(); });
 
         loadData();
 
@@ -107,13 +58,11 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
-        // 🔥 AUTO-REFRESH every 10 seconds (ignores lock state)
         setInterval(() => {
             loadData().catch(err => console.warn('Auto-refresh failed:', err));
             console.log('🔄 Auto-refreshed data at', new Date().toLocaleTimeString());
-        }, 10000); // 10 seconds
+        }, 10000);
 
-        // 🔥 Refresh when user returns to tab
         document.addEventListener('visibilitychange', function() {
             if (!document.hidden) {
                 loadData().catch(err => console.warn('Refresh on focus failed:', err));
@@ -172,11 +121,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 toggleSection(true);
             }
         });
-
-        setLocked(true);
     }
 
-    // Make loadData globally accessible for debugging
     window.loadData = loadData;
 
     async function getProducts() {
@@ -250,7 +196,6 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if (ev.type === 'image_view') {
                 viewMap[ev.productId] = (viewMap[ev.productId] || 0) + 1;
             } else if (ev.type === 'wishlist') {
-                // Only count added events (total wishlist adds)
                 if (ev.action === 'added') {
                     wishlistMap[ev.productId] = (wishlistMap[ev.productId] || 0) + 1;
                     console.log(`💖 Wishlist ADD: ${ev.productId} (total: ${wishlistMap[ev.productId]})`);
@@ -451,7 +396,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const clicks = clickMap[p.id] || 0;
             const wishlists = wishlistMap[p.id] || 0;
             const priority = clicks >= 10 ? '🔥 High' : clicks >= 4 ? '⭐ Medium' : 'Low';
-            const disabledAttr = isUnlocked ? '' : 'disabled';
 
             tbody.innerHTML += `<tr>
                 <td>${p.title.substr(0, 30)}</td>
@@ -461,8 +405,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 <td><strong>${wishlists}</strong></td>
                 <td>${priority}</td>
                 <td>
-                    <button class="btn btn--ghost btn--sm" onclick="editProduct('${p.id}')" ${disabledAttr} title="Edit"><i class="bi bi-pencil"></i></button>
-                    <button class="btn btn--ghost btn--sm btn--danger" onclick="deleteProduct('${p.id}')" ${disabledAttr} title="Delete"><i class="bi bi-trash"></i></button>
+                    <button class="btn btn--ghost btn--sm" onclick="editProduct('${p.id}')" title="Edit"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn--ghost btn--sm btn--danger" onclick="deleteProduct('${p.id}')" title="Delete"><i class="bi bi-trash"></i></button>
                 </td>
             </tr>`;
         });
@@ -470,7 +414,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function handleAddProduct(e) {
         e.preventDefault();
-        if (!isUnlocked) return;
 
         let existingProduct = null;
         if (editingId) {
@@ -573,7 +516,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function saveVaultCreds() {
-        if (!isUnlocked) return;
         const u = document.getElementById('vaultUsernameInput')?.value.trim();
         const p = document.getElementById('vaultPasswordInput')?.value;
         if (!u || !p) return showToast('Enter both.');
@@ -584,7 +526,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function resetAnalytics() {
-        if (!isUnlocked) return;
         if (confirm('Reset all analytics?')) {
             localStorage.removeItem(STORAGE_ANALYTICS);
             localStorage.removeItem(STORAGE_EVENTS);
@@ -594,7 +535,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     window.deleteProduct = async function(id) {
-        if (!isUnlocked) return showToast('🔒 Unlock admin first');
         if (!confirm('Delete this product?')) return;
 
         await deleteProductFromServer(id);
@@ -608,7 +548,6 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     window.editProduct = async function(id) {
-        if (!isUnlocked) return showToast('🔒 Unlock admin first');
         const products = await getProducts();
         const product = products.find(p => p.id === id);
         if (!product) return showToast('Product not found');
