@@ -440,13 +440,58 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // ---------- 🔥 UPDATED: Fixed currency dropdown ----------
     async function initCurrency() {
+        console.log('🔁 initCurrency starting...');
         const cookieCurrency = getCookie('preferred_currency');
         let currency = cookieCurrency || (await fetchCurrencyCode());
         currentCurrency = currency;
         currentRate = await fetchExchangeRate(currency);
         setCookie('preferred_currency', currency, 365);
         updateCurrencyDisplay(currency);
+        convertPrices();
+
+        const dropdown = document.getElementById('currencyDropdown');
+        const trigger = dropdown?.querySelector('.currency-dropdown__trigger');
+        const menu = document.getElementById('currencyMenu');
+
+        if (!dropdown || !trigger || !menu) {
+            console.error('❌ Currency dropdown elements missing!');
+            return;
+        }
+
+        // Remove any old listeners to avoid duplicates
+        const newTrigger = trigger.cloneNode(true);
+        trigger.parentNode.replaceChild(newTrigger, trigger);
+        const newMenu = menu.cloneNode(true);
+        menu.parentNode.replaceChild(newMenu, menu);
+
+        newTrigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdown.classList.toggle('open');
+            console.log('🔽 Dropdown toggled:', dropdown.classList.contains('open'));
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!dropdown.contains(e.target)) {
+                dropdown.classList.remove('open');
+            }
+        });
+
+        newMenu.addEventListener('click', async (e) => {
+            const option = e.target.closest('.currency-option');
+            if (!option) return;
+            const selected = option.dataset.currency;
+            console.log('💱 Currency selected:', selected);
+            currentCurrency = selected;
+            currentRate = await fetchExchangeRate(selected);
+            updateCurrencyDisplay(selected);
+            document.cookie = `preferred_currency=${selected};max-age=31536000;path=/`;
+            convertPrices();
+            dropdown.classList.remove('open');
+        });
+
+        console.log('✅ Currency dropdown initialised');
     }
 
     function updateCurrencyDisplay(currency) {
