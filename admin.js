@@ -403,7 +403,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 🔥 UPDATED: handleAddProduct with comprehensive logging
+    // 🔥 UPDATED: handleAddProduct with base64 thumbnail (like review images)
     async function handleAddProduct(e) {
         e.preventDefault();
 
@@ -413,66 +413,52 @@ document.addEventListener('DOMContentLoaded', function() {
             existingProduct = products.find(p => p.id === editingId);
         }
 
-        // Handle thumbnail upload
+        // 🔥 Handle thumbnail – using base64 (same as review photos)
         const thumbnailFile = document.getElementById('inputThumbnailFile');
         const thumbnailUrlInput = document.getElementById('inputThumbnailUrl');
         let thumbnailUrl = thumbnailUrlInput.value.trim();
 
-        console.log('📂 Thumbnail file input:', thumbnailFile);
-        console.log('📂 Files selected:', thumbnailFile?.files?.length || 0);
-        console.log('📂 Current URL field value:', thumbnailUrl);
+        console.log('📂 Thumbnail file input:', thumbnailFile?.files?.length || 0, 'files');
 
-        // If a file is selected, upload it first
+        // If a file is selected, convert to base64
         if (thumbnailFile && thumbnailFile.files.length > 0) {
-            console.log('📤 Uploading thumbnail...');
-            const formData = new FormData();
-            formData.append('thumbnail', thumbnailFile.files[0]);
-
+            const file = thumbnailFile.files[0];
+            console.log('📸 Converting thumbnail to base64:', file.name, file.size);
             try {
-                const res = await fetch('/api/upload-thumbnail', {
-                    method: 'POST',
-                    body: formData
+                const reader = new FileReader();
+                thumbnailUrl = await new Promise((resolve, reject) => {
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
                 });
-                const data = await res.json();
-                console.log('📸 Upload response (full):', data);
-
-                if (res.ok && data.url) {
-                    thumbnailUrl = data.url;
-                    console.log('✅ Thumbnail URL set to:', thumbnailUrl);
-                    showToast('✅ Thumbnail uploaded!');
-                } else {
-                    console.error('❌ Upload failed:', data);
-                    showToast('❌ Upload failed: ' + (data.error || 'unknown error'));
-                    return;
-                }
+                console.log('✅ Thumbnail converted to base64 (length:', thumbnailUrl.length, ')');
+                showToast('✅ Thumbnail uploaded!');
             } catch (err) {
-                console.error('❌ Upload error:', err);
+                console.error('❌ Base64 conversion failed:', err);
                 showToast('❌ Upload failed: ' + err.message);
                 return;
             }
         } else {
-            console.log('ℹ️ No file selected – using URL field:', thumbnailUrl);
+            console.log('ℹ️ No file selected – using URL:', thumbnailUrl);
         }
 
-        // Must have either a URL or an uploaded file
         if (!thumbnailUrl) {
             showToast('❌ Please provide a thumbnail URL or upload an image.');
             return;
         }
 
-        console.log('📦 Final thumbnailUrl before saving:', thumbnailUrl);
+        console.log('📦 Final thumbnailUrl (base64 or URL):', thumbnailUrl.substring(0, 50) + '...');
 
-        // Handle review photos
+        // Handle review photos (already base64 – keep as-is)
         const files = document.getElementById('inputReviewPhotos')?.files || [];
         let reviewImages = existingProduct?.reviewImages || [];
-        
         if (files.length > 0) {
             const newImages = [];
             for (let f of files) {
-                const b64 = await new Promise(r => { 
-                    const rd = new FileReader(); 
-                    rd.onload = () => r(rd.result); 
-                    rd.readAsDataURL(f); 
+                const b64 = await new Promise(r => {
+                    const rd = new FileReader();
+                    rd.onload = () => r(rd.result);
+                    rd.readAsDataURL(f);
                 });
                 newImages.push(b64);
             }
@@ -484,7 +470,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const productData = {
             dhgateLink: document.getElementById('inputDhgateLink').value,
-            thumbnailUrl: thumbnailUrl, // Use the uploaded or provided URL
+            thumbnailUrl: thumbnailUrl, // ✅ Now contains base64 or URL
             title: document.getElementById('inputTitle').value,
             price: document.getElementById('inputPrice').value,
             affiliateLink: document.getElementById('inputAffiliateLink').value,
@@ -497,7 +483,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const product = { id: editingId || 'prod_' + Date.now(), ...productData };
 
-        console.log('📦 Saving product (thumbnailUrl):', product.thumbnailUrl);
+        console.log('📦 Saving product (thumbnailUrl length):', product.thumbnailUrl?.length || 0);
 
         const serverSuccess = await upsertProductToServer(product);
 
