@@ -117,7 +117,7 @@ app.get('/api/location', (req, res) => {
     });
 });
 
-// ---------- Upload ----------
+// ---------- Upload Review Photos ----------
 app.post('/api/upload-review-photos', upload.array('photos', 10), async (req, res) => {
     try {
         if (!req.files || req.files.length === 0) {
@@ -137,6 +137,29 @@ app.post('/api/upload-review-photos', upload.array('photos', 10), async (req, re
     } catch (err) {
         console.error('Upload conversion failed:', err);
         res.status(500).json({ error: 'Conversion failed' });
+    }
+});
+
+// ---------- 🔥 NEW: Upload Thumbnail (main product image) ----------
+app.post('/api/upload-thumbnail', upload.single('thumbnail'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+
+        const filename = `thumbnail-${Date.now()}-${Math.random().toString(36).substr(2, 6)}.webp`;
+        const outputPath = path.join(UPLOADS_DIR, filename);
+
+        await sharp(req.file.buffer)
+            .resize({ width: 600, height: 600, fit: 'inside', withoutEnlargement: true })
+            .webp({ quality: 70 })
+            .toFile(outputPath);
+
+        const url = `/uploads/${filename}`;
+        res.json({ url });
+    } catch (err) {
+        console.error('Thumbnail upload failed:', err);
+        res.status(500).json({ error: 'Upload failed' });
     }
 });
 
@@ -219,14 +242,11 @@ app.get('/api/image', async (req, res) => {
 
         const buffer = await response.arrayBuffer();
 
-        // Resize to a maximum of 400px on longest side (fits your 300px display)
-        // and convert to WebP with quality 70 for a good balance.
         const processed = await sharp(Buffer.from(buffer))
             .resize({ width: 400, height: 400, fit: 'inside' })
             .webp({ quality: 70 })
             .toBuffer();
 
-        // Cache for 1 year (immutable) – Cloudflare will also respect this
         res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
         res.setHeader('Content-Type', 'image/webp');
         res.send(processed);

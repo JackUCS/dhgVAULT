@@ -34,7 +34,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (btnLogout) btnLogout.addEventListener('click', () => window.location.href = 'index.html');
 
-        // Load data once on page load
         loadData();
 
         if (addForm) addForm.addEventListener('submit', handleAddProduct);
@@ -43,7 +42,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (inputDhgateLink) inputDhgateLink.addEventListener('blur', autoFillPrice);
         if (inputReviewPhotos) inputReviewPhotos.addEventListener('change', previewImages);
 
-        // ✅ Refresh Data button – manual only (no auto-refresh)
         if (btnRefresh) {
             btnRefresh.addEventListener('click', async function() {
                 this.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refreshing...';
@@ -59,9 +57,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 this.disabled = false;
             });
         }
-
-        // ❌ REMOVED: Auto-refresh (setInterval) – no automatic refreshes
-        // ❌ REMOVED: Tab-focus refresh (visibilitychange) – no automatic refreshes
 
         document.querySelectorAll('.collapsible__trigger').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -408,6 +403,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // 🔥 UPDATED: handleAddProduct with thumbnail upload support
     async function handleAddProduct(e) {
         e.preventDefault();
 
@@ -417,6 +413,43 @@ document.addEventListener('DOMContentLoaded', function() {
             existingProduct = products.find(p => p.id === editingId);
         }
 
+        // Handle thumbnail upload
+        const thumbnailFile = document.getElementById('inputThumbnailFile');
+        const thumbnailUrlInput = document.getElementById('inputThumbnailUrl');
+        let thumbnailUrl = thumbnailUrlInput.value.trim();
+
+        // If a file is selected, upload it first
+        if (thumbnailFile.files.length > 0) {
+            const formData = new FormData();
+            formData.append('thumbnail', thumbnailFile.files[0]);
+
+            try {
+                const res = await fetch('/api/upload-thumbnail', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (data.url) {
+                    thumbnailUrl = data.url;
+                    showToast('✅ Thumbnail uploaded!');
+                } else {
+                    showToast('❌ Upload failed');
+                    return;
+                }
+            } catch (err) {
+                console.error('Upload error:', err);
+                showToast('❌ Upload failed');
+                return;
+            }
+        }
+
+        // Must have either a URL or an uploaded file
+        if (!thumbnailUrl) {
+            showToast('❌ Please provide a thumbnail URL or upload an image.');
+            return;
+        }
+
+        // Handle review photos
         const files = document.getElementById('inputReviewPhotos')?.files || [];
         let reviewImages = existingProduct?.reviewImages || [];
         
@@ -438,7 +471,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const productData = {
             dhgateLink: document.getElementById('inputDhgateLink').value,
-            thumbnailUrl: document.getElementById('inputThumbnailUrl').value,
+            thumbnailUrl: thumbnailUrl, // Use the uploaded or provided URL
             title: document.getElementById('inputTitle').value,
             price: document.getElementById('inputPrice').value,
             affiliateLink: document.getElementById('inputAffiliateLink').value,
@@ -486,6 +519,8 @@ document.addEventListener('DOMContentLoaded', function() {
         await loadData();
         e.target.reset();
         document.getElementById('reviewPreviews').innerHTML = '';
+        // Reset file input
+        thumbnailFile.value = '';
     }
 
     function autoFillPrice() {
@@ -572,6 +607,9 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('inputCategory').value = product.category || 'shirts';
         document.getElementById('inputBrand').value = product.brand || '';
         document.getElementById('inputRating').value = product.rating || 4.5;
+        
+        // Reset file input (user can upload a new thumbnail if they want)
+        document.getElementById('inputThumbnailFile').value = '';
         
         const reviewContainer = document.getElementById('reviewPreviews');
         if (reviewContainer) {
