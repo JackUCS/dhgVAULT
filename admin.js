@@ -403,9 +403,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 🔥 UPDATED: handleAddProduct with base64 thumbnail (like review images)
+    // 🔥 FINAL: handleAddProduct with base64 thumbnail (exactly like review photos)
     async function handleAddProduct(e) {
         e.preventDefault();
+        console.log('🚀 handleAddProduct START');
 
         let existingProduct = null;
         if (editingId) {
@@ -413,14 +414,14 @@ document.addEventListener('DOMContentLoaded', function() {
             existingProduct = products.find(p => p.id === editingId);
         }
 
-        // 🔥 Handle thumbnail – using base64 (same as review photos)
+        // 🔥 Get thumbnail file and URL field
         const thumbnailFile = document.getElementById('inputThumbnailFile');
         const thumbnailUrlInput = document.getElementById('inputThumbnailUrl');
         let thumbnailUrl = thumbnailUrlInput.value.trim();
 
-        console.log('📂 Thumbnail file input:', thumbnailFile?.files?.length || 0, 'files');
+        console.log('📂 Thumbnail file input files count:', thumbnailFile?.files?.length || 0);
 
-        // If a file is selected, convert to base64
+        // 🔥 If a file is selected, convert to base64
         if (thumbnailFile && thumbnailFile.files.length > 0) {
             const file = thumbnailFile.files[0];
             console.log('📸 Converting thumbnail to base64:', file.name, file.size);
@@ -442,14 +443,15 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('ℹ️ No file selected – using URL:', thumbnailUrl);
         }
 
+        // 🔥 Validate
         if (!thumbnailUrl) {
             showToast('❌ Please provide a thumbnail URL or upload an image.');
             return;
         }
 
-        console.log('📦 Final thumbnailUrl (base64 or URL):', thumbnailUrl.substring(0, 50) + '...');
+        console.log('📦 Final thumbnailUrl (base64 or URL) length:', thumbnailUrl.length);
 
-        // Handle review photos (already base64 – keep as-is)
+        // Handle review photos (already base64)
         const files = document.getElementById('inputReviewPhotos')?.files || [];
         let reviewImages = existingProduct?.reviewImages || [];
         if (files.length > 0) {
@@ -466,11 +468,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         const brandValue = document.getElementById('inputBrand').value.trim();
-        console.log(`🏷️ Saving brand: "${brandValue}" for product ${editingId || 'new'}`);
 
         const productData = {
             dhgateLink: document.getElementById('inputDhgateLink').value,
-            thumbnailUrl: thumbnailUrl, // ✅ Now contains base64 or URL
+            thumbnailUrl: thumbnailUrl,
             title: document.getElementById('inputTitle').value,
             price: document.getElementById('inputPrice').value,
             affiliateLink: document.getElementById('inputAffiliateLink').value,
@@ -483,7 +484,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const product = { id: editingId || 'prod_' + Date.now(), ...productData };
 
-        console.log('📦 Saving product (thumbnailUrl length):', product.thumbnailUrl?.length || 0);
+        console.log('📦 Saving product, thumbnailUrl length:', product.thumbnailUrl?.length || 0);
 
         const serverSuccess = await upsertProductToServer(product);
 
@@ -518,7 +519,6 @@ document.addEventListener('DOMContentLoaded', function() {
         await loadData();
         e.target.reset();
         document.getElementById('reviewPreviews').innerHTML = '';
-        // Reset file input
         if (thumbnailFile) thumbnailFile.value = '';
     }
 
@@ -607,7 +607,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('inputBrand').value = product.brand || '';
         document.getElementById('inputRating').value = product.rating || 4.5;
         
-        // Reset file input (user can upload a new thumbnail if they want)
+        // Reset file input
         document.getElementById('inputThumbnailFile').value = '';
         
         const reviewContainer = document.getElementById('reviewPreviews');
