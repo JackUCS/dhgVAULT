@@ -75,6 +75,16 @@ function flushPendingEvents() {
     }
 }
 
+// ---------- 🔥 Helper: Proxy image through our server ----------
+function getProxiedImage(url) {
+    if (!url) return '';
+    // If it's already a proxied URL or a local image, return as-is
+    if (url.startsWith('/api/image') || url.startsWith('/uploads/') || url.startsWith('data:')) {
+        return url;
+    }
+    return '/api/image?url=' + encodeURIComponent(url);
+}
+
 // ---------- safety wrapper ----------
 document.addEventListener('DOMContentLoaded', function () {
     'use strict';
@@ -220,7 +230,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ---------- lightbox ----------
     window.openLightbox = function (src) {
-        $lightboxImage.src = src;
+        // Proxy the image if it's a DHGate URL
+        const proxiedSrc = getProxiedImage(src);
+        $lightboxImage.src = proxiedSrc;
         $lightboxOverlay.classList.add('modal-overlay--active');
         try {
             const thumb = document.querySelector(`img[src="${src}"]`);
@@ -260,7 +272,7 @@ document.addEventListener('DOMContentLoaded', function () {
         setTimeout(() => t.remove(), 2000);
     }
 
-    // ---------- 🔥 renderProducts – passes index to createCard ----------
+    // ---------- 🔥 renderProducts – passes index to createCard + preload LCP ----------
     async function renderProducts(filter = 'all') {
         const products = await getProducts();
         let filtered = products;
@@ -278,6 +290,25 @@ document.addEventListener('DOMContentLoaded', function () {
             $productsGrid.style.display = '';
             $emptyState.style.display = 'none';
         }
+        
+        // 🔥 Preload the first product image (LCP optimization)
+        if (filtered.length > 0) {
+            const firstImage = filtered[0].thumbnailUrl;
+            if (firstImage) {
+                const proxiedUrl = getProxiedImage(firstImage);
+                // Remove existing preload if any
+                const existing = document.querySelector('link[rel="preload"][as="image"]');
+                if (existing) existing.remove();
+                const preloadLink = document.createElement('link');
+                preloadLink.rel = 'preload';
+                preloadLink.as = 'image';
+                preloadLink.href = proxiedUrl;
+                preloadLink.fetchPriority = 'high';
+                document.head.appendChild(preloadLink);
+                console.log('🔁 Preloaded LCP image:', proxiedUrl);
+            }
+        }
+        
         // ✅ Pass index to createCard
         filtered.forEach((p, index) => $productsGrid.appendChild(createCard(p, index)));
         updateWishlistButtons();
@@ -285,7 +316,7 @@ document.addEventListener('DOMContentLoaded', function () {
         updateBrandSidebar(products, filter);
     }
 
-    // ---------- 🔥 createCard – first 4 products load immediately ----------
+    // ---------- 🔥 createCard – uses proxied images, first 4 load immediately ----------
     function createCard(p, index) {
         const card = document.createElement('div');
         card.className = 'product-card';
@@ -296,8 +327,12 @@ document.addEventListener('DOMContentLoaded', function () {
         const loadingAttr = isAboveFold ? '' : 'loading="lazy"';
         const fetchPriority = isAboveFold ? 'fetchpriority="high"' : '';
 
+        // 🔥 Proxy the main image
+        const proxiedMainImage = getProxiedImage(p.thumbnailUrl);
+
+        // Proxy review images too
         const reviewThumbs = (p.reviewImages || []).map(img =>
-            `<img class="product-card__review-thumb" src="${escapeHTML(img)}"
+            `<img class="product-card__review-thumb" src="${getProxiedImage(img)}"
                 alt="${escapeHTML(p.title)} review photo"
                 width="44" height="44"
                 loading="lazy"
@@ -307,7 +342,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         card.innerHTML = `
             <div class="product-card__image-wrap">
-                <img class="product-card__main-img" src="${escapeHTML(p.thumbnailUrl)}" alt="${escapeHTML(p.title)}"
+                <img class="product-card__main-img" src="${escapeHTML(proxiedMainImage)}" alt="${escapeHTML(p.title)}"
                      width="300" height="300"
                      ${loadingAttr}
                      ${fetchPriority}

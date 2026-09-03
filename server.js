@@ -196,10 +196,44 @@ app.get('/api/events', (req, res) => {
     res.json(readJSON(EVENTS_FILE, []));
 });
 
-// 🔥 NEW: Clear all events (Reset Analytics)
 app.delete('/api/events', (req, res) => {
     writeJSON(EVENTS_FILE, []);
     res.json({ success: true });
+});
+
+// ---------- 🔥 IMAGE PROXY (optimise DHGate images) ----------
+app.get('/api/image', async (req, res) => {
+    const imageUrl = req.query.url;
+    if (!imageUrl) return res.status(400).json({ error: 'Missing url parameter' });
+
+    // Only allow http/https to prevent SSRF
+    if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+        return res.status(400).json({ error: 'Invalid URL' });
+    }
+
+    try {
+        const response = await fetch(imageUrl);
+        if (!response.ok) {
+            return res.status(404).json({ error: 'Image not found' });
+        }
+
+        const buffer = await response.arrayBuffer();
+
+        // Resize to a maximum of 400px on longest side (fits your 300px display)
+        // and convert to WebP with quality 70 for a good balance.
+        const processed = await sharp(Buffer.from(buffer))
+            .resize({ width: 400, height: 400, fit: 'inside' })
+            .webp({ quality: 70 })
+            .toBuffer();
+
+        // Cache for 1 year (immutable) – Cloudflare will also respect this
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        res.setHeader('Content-Type', 'image/webp');
+        res.send(processed);
+    } catch (err) {
+        console.error('Image proxy error:', err);
+        res.status(500).json({ error: 'Image processing failed' });
+    }
 });
 
 // ---------- Static files ----------
