@@ -408,8 +408,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+<<<<<<< HEAD
+=======
+    // 🔥 FINAL: handleAddProduct with base64 thumbnail (exactly like review photos)
+>>>>>>> 85c2068 (Should work)
     async function handleAddProduct(e) {
         e.preventDefault();
+        console.log('🚀 handleAddProduct START');
 
         let existingProduct = null;
         if (editingId) {
@@ -417,6 +422,47 @@ document.addEventListener('DOMContentLoaded', function() {
             existingProduct = products.find(p => p.id === editingId);
         }
 
+<<<<<<< HEAD
+=======
+        // 🔥 Get thumbnail file and URL field
+        const thumbnailFile = document.getElementById('inputThumbnailFile');
+        const thumbnailUrlInput = document.getElementById('inputThumbnailUrl');
+        let thumbnailUrl = thumbnailUrlInput.value.trim();
+
+        console.log('📂 Thumbnail file input files count:', thumbnailFile?.files?.length || 0);
+
+        // 🔥 If a file is selected, convert to base64
+        if (thumbnailFile && thumbnailFile.files.length > 0) {
+            const file = thumbnailFile.files[0];
+            console.log('📸 Converting thumbnail to base64:', file.name, file.size);
+            try {
+                const reader = new FileReader();
+                thumbnailUrl = await new Promise((resolve, reject) => {
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+                console.log('✅ Thumbnail converted to base64 (length:', thumbnailUrl.length, ')');
+                showToast('✅ Thumbnail uploaded!');
+            } catch (err) {
+                console.error('❌ Base64 conversion failed:', err);
+                showToast('❌ Upload failed: ' + err.message);
+                return;
+            }
+        } else {
+            console.log('ℹ️ No file selected – using URL:', thumbnailUrl);
+        }
+
+        // 🔥 Validate
+        if (!thumbnailUrl) {
+            showToast('❌ Please provide a thumbnail URL or upload an image.');
+            return;
+        }
+
+        console.log('📦 Final thumbnailUrl (base64 or URL) length:', thumbnailUrl.length);
+
+        // Handle review photos (already base64)
+>>>>>>> 85c2068 (Should work)
         const files = document.getElementById('inputReviewPhotos')?.files || [];
         let reviewImages = existingProduct?.reviewImages || [];
         
@@ -434,11 +480,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         const brandValue = document.getElementById('inputBrand').value.trim();
-        console.log(`🏷️ Saving brand: "${brandValue}" for product ${editingId || 'new'}`);
 
         const productData = {
             dhgateLink: document.getElementById('inputDhgateLink').value,
+<<<<<<< HEAD
             thumbnailUrl: document.getElementById('inputThumbnailUrl').value,
+=======
+            thumbnailUrl: thumbnailUrl,
+>>>>>>> 85c2068 (Should work)
             title: document.getElementById('inputTitle').value,
             price: document.getElementById('inputPrice').value,
             affiliateLink: document.getElementById('inputAffiliateLink').value,
@@ -451,7 +500,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const product = { id: editingId || 'prod_' + Date.now(), ...productData };
 
+<<<<<<< HEAD
         console.log('📦 Saving product:', product);
+=======
+        console.log('📦 Saving product, thumbnailUrl length:', product.thumbnailUrl?.length || 0);
+>>>>>>> 85c2068 (Should work)
 
         const serverSuccess = await upsertProductToServer(product);
 
@@ -486,6 +539,10 @@ document.addEventListener('DOMContentLoaded', function() {
         await loadData();
         e.target.reset();
         document.getElementById('reviewPreviews').innerHTML = '';
+<<<<<<< HEAD
+=======
+        if (thumbnailFile) thumbnailFile.value = '';
+>>>>>>> 85c2068 (Should work)
     }
 
     function autoFillPrice() {
@@ -573,6 +630,12 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('inputBrand').value = product.brand || '';
         document.getElementById('inputRating').value = product.rating || 4.5;
         
+<<<<<<< HEAD
+=======
+        // Reset file input
+        document.getElementById('inputThumbnailFile').value = '';
+        
+>>>>>>> 85c2068 (Should work)
         const reviewContainer = document.getElementById('reviewPreviews');
         if (reviewContainer) {
             if (product.reviewImages && product.reviewImages.length > 0) {
