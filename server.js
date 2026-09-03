@@ -117,7 +117,7 @@ app.get('/api/location', (req, res) => {
     });
 });
 
-// ---------- Upload ----------
+// ---------- Upload Review Photos ----------
 app.post('/api/upload-review-photos', upload.array('photos', 10), async (req, res) => {
     try {
         if (!req.files || req.files.length === 0) {
@@ -137,6 +137,29 @@ app.post('/api/upload-review-photos', upload.array('photos', 10), async (req, re
     } catch (err) {
         console.error('Upload conversion failed:', err);
         res.status(500).json({ error: 'Conversion failed' });
+    }
+});
+
+// ---------- 🔥 NEW: Upload Thumbnail (main product image) ----------
+app.post('/api/upload-thumbnail', upload.single('thumbnail'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+
+        const filename = `thumbnail-${Date.now()}-${Math.random().toString(36).substr(2, 6)}.webp`;
+        const outputPath = path.join(UPLOADS_DIR, filename);
+
+        await sharp(req.file.buffer)
+            .resize({ width: 600, height: 600, fit: 'inside', withoutEnlargement: true })
+            .webp({ quality: 70 })
+            .toFile(outputPath);
+
+        const url = `/uploads/${filename}`;
+        res.json({ url });
+    } catch (err) {
+        console.error('Thumbnail upload failed:', err);
+        res.status(500).json({ error: 'Upload failed' });
     }
 });
 
@@ -196,10 +219,41 @@ app.get('/api/events', (req, res) => {
     res.json(readJSON(EVENTS_FILE, []));
 });
 
-// 🔥 NEW: Clear all events (Reset Analytics)
 app.delete('/api/events', (req, res) => {
     writeJSON(EVENTS_FILE, []);
     res.json({ success: true });
+});
+
+// ---------- 🔥 IMAGE PROXY (optimise DHGate images) ----------
+app.get('/api/image', async (req, res) => {
+    const imageUrl = req.query.url;
+    if (!imageUrl) return res.status(400).json({ error: 'Missing url parameter' });
+
+    // Only allow http/https to prevent SSRF
+    if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+        return res.status(400).json({ error: 'Invalid URL' });
+    }
+
+    try {
+        const response = await fetch(imageUrl);
+        if (!response.ok) {
+            return res.status(404).json({ error: 'Image not found' });
+        }
+
+        const buffer = await response.arrayBuffer();
+
+        const processed = await sharp(Buffer.from(buffer))
+            .resize({ width: 400, height: 400, fit: 'inside' })
+            .webp({ quality: 70 })
+            .toBuffer();
+
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        res.setHeader('Content-Type', 'image/webp');
+        res.send(processed);
+    } catch (err) {
+        console.error('Image proxy error:', err);
+        res.status(500).json({ error: 'Image processing failed' });
+    }
 });
 
 // ---------- Static files ----------

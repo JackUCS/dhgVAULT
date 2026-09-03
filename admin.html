@@ -79,25 +79,21 @@
                                 <input type="url" id="inputDhgateLink" required>
                             </div>
                             <div class="form-group">
-                                <label>Thumbnail URL</label>
-                                <input type="url" id="inputThumbnailUrl" required>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
                                 <label>Title</label>
                                 <input type="text" id="inputTitle" required>
                             </div>
+                        </div>
+                        <div class="form-row">
                             <div class="form-group">
                                 <label>Price (USD)</label>
                                 <input type="text" id="inputPrice" required>
                             </div>
-                        </div>
-                        <div class="form-row">
                             <div class="form-group">
                                 <label>Affiliate Link</label>
                                 <input type="url" id="inputAffiliateLink" required>
                             </div>
+                        </div>
+                        <div class="form-row">
                             <div class="form-group">
                                 <label>Category</label>
                                 <select id="inputCategory">
@@ -110,8 +106,6 @@
                                     <option value="accessories">Accessories</option>
                                 </select>
                             </div>
-                        </div>
-                        <div class="form-row">
                             <div class="form-group">
                                 <label>Brand</label>
                                 <input type="text" id="inputBrand" placeholder="e.g. Nike, Adidas">
@@ -125,6 +119,17 @@
                             <div class="form-group">
                                 <label>Review Photos</label>
                                 <input type="file" id="inputReviewPhotos" accept="image/*" multiple>
+                            </div>
+                        </div>
+                        <!-- 🔥 NEW: Thumbnail upload section -->
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Thumbnail URL</label>
+                                <input type="url" id="inputThumbnailUrl" placeholder="https://... (optional if uploading)">
+                            </div>
+                            <div class="form-group">
+                                <label>Or Upload Thumbnail</label>
+                                <input type="file" id="inputThumbnailFile" accept="image/*">
                             </div>
                         </div>
                         <div class="review-previews" id="reviewPreviews"></div>
@@ -209,10 +214,14 @@
     </div>
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     <!-- 🔥 CACHE BUST: changed version to 2030 -->
     <script src="admin.min.js?v=2030"></script>
 =======
     <script src="admin.min.js?v=2035"></script>
 >>>>>>> 85c2068 (Should work)
+=======
+    <script src="admin.min.js?v=2035"></script>
+>>>>>>> 85c2068ca7588c448f5140662f10d989853f38ad
 </body>
 </html>

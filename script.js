@@ -75,6 +75,16 @@ function flushPendingEvents() {
     }
 }
 
+// ---------- 🔥 Helper: Proxy image through our server ----------
+function getProxiedImage(url) {
+    if (!url) return '';
+    // If it's already a proxied URL or a local image, return as-is
+    if (url.startsWith('/api/image') || url.startsWith('/uploads/') || url.startsWith('data:')) {
+        return url;
+    }
+    return '/api/image?url=' + encodeURIComponent(url);
+}
+
 // ---------- safety wrapper ----------
 document.addEventListener('DOMContentLoaded', function () {
     'use strict';
@@ -220,7 +230,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ---------- lightbox ----------
     window.openLightbox = function (src) {
-        $lightboxImage.src = src;
+        // Proxy the image if it's a DHGate URL
+        const proxiedSrc = getProxiedImage(src);
+        $lightboxImage.src = proxiedSrc;
         $lightboxOverlay.classList.add('modal-overlay--active');
         try {
             const thumb = document.querySelector(`img[src="${src}"]`);
@@ -260,7 +272,7 @@ document.addEventListener('DOMContentLoaded', function () {
         setTimeout(() => t.remove(), 2000);
     }
 
-    // ---------- render ----------
+    // ---------- 🔥 renderProducts – passes index to createCard + preload LCP ----------
     async function renderProducts(filter = 'all') {
         const products = await getProducts();
         let filtered = products;
@@ -278,20 +290,49 @@ document.addEventListener('DOMContentLoaded', function () {
             $productsGrid.style.display = '';
             $emptyState.style.display = 'none';
         }
-        filtered.forEach(p => $productsGrid.appendChild(createCard(p)));
+        
+        // 🔥 Preload the first product image (LCP optimization)
+        if (filtered.length > 0) {
+            const firstImage = filtered[0].thumbnailUrl;
+            if (firstImage) {
+                const proxiedUrl = getProxiedImage(firstImage);
+                // Remove existing preload if any
+                const existing = document.querySelector('link[rel="preload"][as="image"]');
+                if (existing) existing.remove();
+                const preloadLink = document.createElement('link');
+                preloadLink.rel = 'preload';
+                preloadLink.as = 'image';
+                preloadLink.href = proxiedUrl;
+                preloadLink.fetchPriority = 'high';
+                document.head.appendChild(preloadLink);
+                console.log('🔁 Preloaded LCP image:', proxiedUrl);
+            }
+        }
+        
+        // ✅ Pass index to createCard
+        filtered.forEach((p, index) => $productsGrid.appendChild(createCard(p, index)));
         updateWishlistButtons();
         convertPrices();
         updateBrandSidebar(products, filter);
     }
 
-    // ---------- createCard() WITH VISUAL STARS & lazy loading ----------
-    function createCard(p) {
+    // ---------- 🔥 createCard – uses proxied images, first 4 load immediately ----------
+    function createCard(p, index) {
         const card = document.createElement('div');
         card.className = 'product-card';
         card.dataset.productId = p.id;
 
+        // First 4 products: no lazy-load, high priority (covers the fold on desktop & mobile)
+        const isAboveFold = index < 4;
+        const loadingAttr = isAboveFold ? '' : 'loading="lazy"';
+        const fetchPriority = isAboveFold ? 'fetchpriority="high"' : '';
+
+        // 🔥 Proxy the main image
+        const proxiedMainImage = getProxiedImage(p.thumbnailUrl);
+
+        // Proxy review images too
         const reviewThumbs = (p.reviewImages || []).map(img =>
-            `<img class="product-card__review-thumb" src="${escapeHTML(img)}"
+            `<img class="product-card__review-thumb" src="${getProxiedImage(img)}"
                 alt="${escapeHTML(p.title)} review photo"
                 width="44" height="44"
                 loading="lazy"
@@ -301,9 +342,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
         card.innerHTML = `
             <div class="product-card__image-wrap">
-                <img class="product-card__main-img" src="${escapeHTML(p.thumbnailUrl)}" alt="${escapeHTML(p.title)}"
+                <img class="product-card__main-img" src="${escapeHTML(proxiedMainImage)}" alt="${escapeHTML(p.title)}"
                      width="300" height="300"
-                     loading="lazy"
+                     ${loadingAttr}
+                     ${fetchPriority}
                      onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22300%22><rect fill=%22%231a1a2e%22 width=%22300%22 height=%22300%22/><text fill=%22%23666%22 x=%2250%25%22 y=%2250%25%22 dy=%22.3em%22>Image</text></svg>'">
                 <div class="product-card__dhgate-badge"><i class="bi bi-diamond-fill"></i> DHGate</div>
                 <button class="product-card__wishlist-btn" data-product-id="${p.id}" aria-label="Add to wishlist" onclick="event.stopPropagation(); toggleWishlist('${p.id}')">
@@ -433,13 +475,58 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // ---------- 🔥 UPDATED: Fixed currency dropdown ----------
     async function initCurrency() {
+        console.log('🔁 initCurrency starting...');
         const cookieCurrency = getCookie('preferred_currency');
         let currency = cookieCurrency || (await fetchCurrencyCode());
         currentCurrency = currency;
         currentRate = await fetchExchangeRate(currency);
         setCookie('preferred_currency', currency, 365);
         updateCurrencyDisplay(currency);
+        convertPrices();
+
+        const dropdown = document.getElementById('currencyDropdown');
+        const trigger = dropdown?.querySelector('.currency-dropdown__trigger');
+        const menu = document.getElementById('currencyMenu');
+
+        if (!dropdown || !trigger || !menu) {
+            console.error('❌ Currency dropdown elements missing!');
+            return;
+        }
+
+        // Remove any old listeners to avoid duplicates
+        const newTrigger = trigger.cloneNode(true);
+        trigger.parentNode.replaceChild(newTrigger, trigger);
+        const newMenu = menu.cloneNode(true);
+        menu.parentNode.replaceChild(newMenu, menu);
+
+        newTrigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdown.classList.toggle('open');
+            console.log('🔽 Dropdown toggled:', dropdown.classList.contains('open'));
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!dropdown.contains(e.target)) {
+                dropdown.classList.remove('open');
+            }
+        });
+
+        newMenu.addEventListener('click', async (e) => {
+            const option = e.target.closest('.currency-option');
+            if (!option) return;
+            const selected = option.dataset.currency;
+            console.log('💱 Currency selected:', selected);
+            currentCurrency = selected;
+            currentRate = await fetchExchangeRate(selected);
+            updateCurrencyDisplay(selected);
+            document.cookie = `preferred_currency=${selected};max-age=31536000;path=/`;
+            convertPrices();
+            dropdown.classList.remove('open');
+        });
+
+        console.log('✅ Currency dropdown initialised');
     }
 
     function updateCurrencyDisplay(currency) {

@@ -34,7 +34,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (btnLogout) btnLogout.addEventListener('click', () => window.location.href = 'index.html');
 
-        // Load data once on page load
         loadData();
 
         if (addForm) addForm.addEventListener('submit', handleAddProduct);
@@ -43,7 +42,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (inputDhgateLink) inputDhgateLink.addEventListener('blur', autoFillPrice);
         if (inputReviewPhotos) inputReviewPhotos.addEventListener('change', previewImages);
 
-        // ✅ Refresh Data button – manual only (no auto-refresh)
         if (btnRefresh) {
             btnRefresh.addEventListener('click', async function() {
                 this.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refreshing...';
@@ -59,9 +57,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 this.disabled = false;
             });
         }
-
-        // ❌ REMOVED: Auto-refresh (setInterval) – no automatic refreshes
-        // ❌ REMOVED: Tab-focus refresh (visibilitychange) – no automatic refreshes
 
         document.querySelectorAll('.collapsible__trigger').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -408,10 +403,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-<<<<<<< HEAD
-=======
     // 🔥 FINAL: handleAddProduct with base64 thumbnail (exactly like review photos)
->>>>>>> 85c2068 (Should work)
     async function handleAddProduct(e) {
         e.preventDefault();
         console.log('🚀 handleAddProduct START');
@@ -422,8 +414,6 @@ document.addEventListener('DOMContentLoaded', function() {
             existingProduct = products.find(p => p.id === editingId);
         }
 
-<<<<<<< HEAD
-=======
         // 🔥 Get thumbnail file and URL field
         const thumbnailFile = document.getElementById('inputThumbnailFile');
         const thumbnailUrlInput = document.getElementById('inputThumbnailUrl');
@@ -462,17 +452,15 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('📦 Final thumbnailUrl (base64 or URL) length:', thumbnailUrl.length);
 
         // Handle review photos (already base64)
->>>>>>> 85c2068 (Should work)
         const files = document.getElementById('inputReviewPhotos')?.files || [];
         let reviewImages = existingProduct?.reviewImages || [];
-        
         if (files.length > 0) {
             const newImages = [];
             for (let f of files) {
-                const b64 = await new Promise(r => { 
-                    const rd = new FileReader(); 
-                    rd.onload = () => r(rd.result); 
-                    rd.readAsDataURL(f); 
+                const b64 = await new Promise(r => {
+                    const rd = new FileReader();
+                    rd.onload = () => r(rd.result);
+                    rd.readAsDataURL(f);
                 });
                 newImages.push(b64);
             }
@@ -483,11 +471,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const productData = {
             dhgateLink: document.getElementById('inputDhgateLink').value,
-<<<<<<< HEAD
-            thumbnailUrl: document.getElementById('inputThumbnailUrl').value,
-=======
             thumbnailUrl: thumbnailUrl,
->>>>>>> 85c2068 (Should work)
             title: document.getElementById('inputTitle').value,
             price: document.getElementById('inputPrice').value,
             affiliateLink: document.getElementById('inputAffiliateLink').value,
@@ -500,11 +484,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const product = { id: editingId || 'prod_' + Date.now(), ...productData };
 
-<<<<<<< HEAD
-        console.log('📦 Saving product:', product);
-=======
         console.log('📦 Saving product, thumbnailUrl length:', product.thumbnailUrl?.length || 0);
->>>>>>> 85c2068 (Should work)
 
         const serverSuccess = await upsertProductToServer(product);
 
@@ -539,10 +519,7 @@ document.addEventListener('DOMContentLoaded', function() {
         await loadData();
         e.target.reset();
         document.getElementById('reviewPreviews').innerHTML = '';
-<<<<<<< HEAD
-=======
         if (thumbnailFile) thumbnailFile.value = '';
->>>>>>> 85c2068 (Should work)
     }
 
     function autoFillPrice() {
@@ -630,12 +607,9 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('inputBrand').value = product.brand || '';
         document.getElementById('inputRating').value = product.rating || 4.5;
         
-<<<<<<< HEAD
-=======
         // Reset file input
         document.getElementById('inputThumbnailFile').value = '';
         
->>>>>>> 85c2068 (Should work)
         const reviewContainer = document.getElementById('reviewPreviews');
         if (reviewContainer) {
             if (product.reviewImages && product.reviewImages.length > 0) {
