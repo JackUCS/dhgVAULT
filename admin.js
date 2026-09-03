@@ -403,7 +403,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 🔥 UPDATED: handleAddProduct with thumbnail upload support
+    // 🔥 UPDATED: handleAddProduct with comprehensive logging
     async function handleAddProduct(e) {
         e.preventDefault();
 
@@ -418,8 +418,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const thumbnailUrlInput = document.getElementById('inputThumbnailUrl');
         let thumbnailUrl = thumbnailUrlInput.value.trim();
 
+        console.log('📂 Thumbnail file input:', thumbnailFile);
+        console.log('📂 Files selected:', thumbnailFile?.files?.length || 0);
+        console.log('📂 Current URL field value:', thumbnailUrl);
+
         // If a file is selected, upload it first
-        if (thumbnailFile.files.length > 0) {
+        if (thumbnailFile && thumbnailFile.files.length > 0) {
+            console.log('📤 Uploading thumbnail...');
             const formData = new FormData();
             formData.append('thumbnail', thumbnailFile.files[0]);
 
@@ -429,18 +434,24 @@ document.addEventListener('DOMContentLoaded', function() {
                     body: formData
                 });
                 const data = await res.json();
-                if (data.url) {
+                console.log('📸 Upload response (full):', data);
+
+                if (res.ok && data.url) {
                     thumbnailUrl = data.url;
+                    console.log('✅ Thumbnail URL set to:', thumbnailUrl);
                     showToast('✅ Thumbnail uploaded!');
                 } else {
-                    showToast('❌ Upload failed');
+                    console.error('❌ Upload failed:', data);
+                    showToast('❌ Upload failed: ' + (data.error || 'unknown error'));
                     return;
                 }
             } catch (err) {
-                console.error('Upload error:', err);
-                showToast('❌ Upload failed');
+                console.error('❌ Upload error:', err);
+                showToast('❌ Upload failed: ' + err.message);
                 return;
             }
+        } else {
+            console.log('ℹ️ No file selected – using URL field:', thumbnailUrl);
         }
 
         // Must have either a URL or an uploaded file
@@ -448,6 +459,8 @@ document.addEventListener('DOMContentLoaded', function() {
             showToast('❌ Please provide a thumbnail URL or upload an image.');
             return;
         }
+
+        console.log('📦 Final thumbnailUrl before saving:', thumbnailUrl);
 
         // Handle review photos
         const files = document.getElementById('inputReviewPhotos')?.files || [];
@@ -484,7 +497,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const product = { id: editingId || 'prod_' + Date.now(), ...productData };
 
-        console.log('📦 Saving product:', product);
+        console.log('📦 Saving product (thumbnailUrl):', product.thumbnailUrl);
 
         const serverSuccess = await upsertProductToServer(product);
 
@@ -520,7 +533,7 @@ document.addEventListener('DOMContentLoaded', function() {
         e.target.reset();
         document.getElementById('reviewPreviews').innerHTML = '';
         // Reset file input
-        thumbnailFile.value = '';
+        if (thumbnailFile) thumbnailFile.value = '';
     }
 
     function autoFillPrice() {
