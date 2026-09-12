@@ -66,6 +66,18 @@ document.addEventListener('DOMContentLoaded', function() {
         return data.urls;
     }
 
+    // 🔥 NEW: fetch a remote URL through the server, get back a local /uploads/ path
+    async function fetchThumbnailFromUrl(url) {
+        const res = await fetch('/api/fetch-thumbnail', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url })
+        });
+        if (!res.ok) throw new Error(`Fetch failed (${res.status})`);
+        const data = await res.json();
+        return data.url;
+    }
+
     function init() {
         const btnLogout = document.getElementById('btnLogout');
         const addForm = document.getElementById('addProductForm');
@@ -101,7 +113,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
-        // Collapsible sections
         document.querySelectorAll('.admin-section').forEach(section => {
             const title = section.querySelector('.admin-section__title');
             if (!title) return;
@@ -350,7 +361,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const thumbnailUrlInput = document.getElementById('inputThumbnailUrl');
         let thumbnailUrl = thumbnailUrlInput.value.trim();
 
-        // Thumbnail: prefer uploaded file, fall back to URL input
+        // Thumbnail: prefer uploaded file, else proxy the URL through server
         if (thumbnailFile && thumbnailFile.files.length > 0) {
             const file = thumbnailFile.files[0];
             try {
@@ -366,6 +377,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 showToast('❌ ' + err.message);
                 return;
             }
+        } else if (thumbnailUrl && isHttp && !thumbnailUrl.startsWith('/uploads/') && !thumbnailUrl.startsWith('data:')) {
+            // 🔥 NEW: fetch the remote URL server-side and convert to local WebP
+            try {
+                const localUrl = await fetchThumbnailFromUrl(thumbnailUrl);
+                thumbnailUrl = localUrl;
+                showToast('✅ Thumbnail fetched & optimised');
+            } catch (err) {
+                console.warn('Fetch-thumbnail failed, keeping remote URL:', err);
+                // fall through with the original URL — storefront will proxy it
+            }
         }
 
         if (!thumbnailUrl) {
@@ -373,7 +394,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Review photos: prefer upload, fall back to base64 on file://
+        // Review photos
         const files = document.getElementById('inputReviewPhotos')?.files || [];
         let reviewImages = existingProduct?.reviewImages || [];
         if (files.length > 0) {
@@ -412,7 +433,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const product = { id: editingId || 'prod_' + Date.now(), ...productData };
         await upsertProductToServer(product);
 
-        // Local cache (drop review images to avoid localStorage quota)
         const localProduct = { ...product };
         delete localProduct.reviewImages;
         try {

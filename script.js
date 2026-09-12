@@ -34,14 +34,14 @@ function getStarsHTML(rating) {
     return stars;
 }
 
-// ---------- Escape helper (escapes quotes too) ----------
+// ---------- Escape helper ----------
 function escapeHTML(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
     }[c]));
 }
 
-// ---------- Global event queue ----------
+// ---------- Event queue ----------
 let pendingEvents = [];
 
 function sendEvent(event) {
@@ -111,6 +111,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ---------- Product cache ----------
     let _productCache = null;
+    let _cardsBuilt = false;
 
     async function getProducts(force = false) {
         if (_productCache && !force) return _productCache;
@@ -225,24 +226,55 @@ document.addEventListener('DOMContentLoaded', function () {
         setTimeout(() => t.remove(), 2000);
     }
 
-    // ---------- Render products ----------
+    // ---------- Render products (build once, toggle display on filter) ----------
     async function renderProducts(filter = 'all') {
-        $productsGrid.innerHTML = `
-            <div class="product-card skeleton"></div>
-            <div class="product-card skeleton"></div>
-            <div class="product-card skeleton"></div>
-            <div class="product-card skeleton"></div>
-        `;
-        $productsGrid.style.display = '';
-        $emptyState.style.display = 'none';
+        if (!_cardsBuilt) {
+            // First-ever render: show skeleton, fetch, build once
+            $productsGrid.innerHTML = `
+                <div class="product-card skeleton"></div>
+                <div class="product-card skeleton"></div>
+                <div class="product-card skeleton"></div>
+                <div class="product-card skeleton"></div>
+            `;
+            $productsGrid.style.display = '';
+            $emptyState.style.display = 'none';
 
-        const products = await getProducts();
-        let filtered = products;
-        if (filter !== 'all') filtered = filtered.filter(p => p.category === filter);
-        if (currentBrand) filtered = filtered.filter(p => p.brand === currentBrand);
+            const products = await getProducts();
 
-        $productsGrid.innerHTML = '';
-        if (filtered.length === 0) {
+            $productsGrid.innerHTML = '';
+            products.forEach((p, index) => {
+                const card = createCard(p, index);
+                card.dataset.category = p.category || '';
+                card.dataset.brand = p.brand || '';
+                $productsGrid.appendChild(card);
+            });
+            _cardsBuilt = true;
+
+            // Preload first product image
+            if (products.length > 0 && products[0].thumbnailUrl) {
+                const proxiedUrl = getProxiedImage(products[0].thumbnailUrl);
+                const existing = document.querySelector('link[rel="preload"][as="image"]');
+                if (existing) existing.remove();
+                const preloadLink = document.createElement('link');
+                preloadLink.rel = 'preload';
+                preloadLink.as = 'image';
+                preloadLink.href = proxiedUrl;
+                preloadLink.fetchPriority = 'high';
+                document.head.appendChild(preloadLink);
+            }
+        }
+
+        // Filter via display toggle — instant, no DOM rebuild
+        let visible = 0;
+        $productsGrid.querySelectorAll('.product-card').forEach(card => {
+            const matchCat = filter === 'all' || card.dataset.category === filter;
+            const matchBrand = !currentBrand || card.dataset.brand === currentBrand;
+            const show = matchCat && matchBrand;
+            card.style.display = show ? '' : 'none';
+            if (show) visible++;
+        });
+
+        if (visible === 0) {
             $productsGrid.style.display = 'none';
             $emptyState.style.display = 'block';
         } else {
@@ -250,22 +282,9 @@ document.addEventListener('DOMContentLoaded', function () {
             $emptyState.style.display = 'none';
         }
 
-        if (filtered.length > 0 && filtered[0].thumbnailUrl) {
-            const proxiedUrl = getProxiedImage(filtered[0].thumbnailUrl);
-            const existing = document.querySelector('link[rel="preload"][as="image"]');
-            if (existing) existing.remove();
-            const preloadLink = document.createElement('link');
-            preloadLink.rel = 'preload';
-            preloadLink.as = 'image';
-            preloadLink.href = proxiedUrl;
-            preloadLink.fetchPriority = 'high';
-            document.head.appendChild(preloadLink);
-        }
-
-        filtered.forEach((p, index) => $productsGrid.appendChild(createCard(p, index)));
         updateWishlistButtons();
         convertPrices();
-        updateBrandSidebar(products, filter);
+        updateBrandSidebar(_productCache || [], filter);
     }
 
     function createCard(p, index) {
@@ -417,7 +436,7 @@ document.addEventListener('DOMContentLoaded', function () {
         currentRate = await fetchExchangeRate(currency);
         setCookie('preferred_currency', currency, 365);
         updateCurrencyDisplay(currency);
-        // NOTE: convertPrices() is called by renderProducts — no need to duplicate here
+        convertPrices(); // prices update once rates resolve
 
         const dropdown = document.getElementById('currencyDropdown');
         const trigger = dropdown?.querySelector('.currency-dropdown__trigger');
@@ -528,6 +547,7 @@ document.addEventListener('DOMContentLoaded', function () {
     window.addEventListener('storage', (e) => {
         if (e.key === STORAGE_PRODUCTS) {
             _productCache = null;
+            _cardsBuilt = false;
             renderProducts(currentFilter);
         }
     });
@@ -552,9 +572,10 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // ---------- Start ----------
+    // ---------- Start (render immediately, currency in background) ----------
     incrementPageViews();
-    initCurrency().then(() => renderProducts());
+    renderProducts();       // fires NOW — no waiting for currency
+    initCurrency();         // fire-and-forget: updates prices when it resolves
 });
 
 // ---------- Cookie consent ----------

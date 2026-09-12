@@ -5,6 +5,7 @@ const path = require('path');
 const requestIp = require('request-ip');
 const http = require('http');
 const fs = require('fs');
+const crypto = require('crypto');
 const sharp = require('sharp');
 const multer = require('multer');
 const compression = require('compression');
@@ -41,19 +42,18 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ limit: '5mb', extended: true }));
 
-// ---------- Data directory ----------
+// ---------- Data dirs ----------
 const DATA_DIR = process.env.DATA_DIR || __dirname;
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const PRODUCTS_FILE = path.join(DATA_DIR, 'products.json');
 const EVENTS_FILE = path.join(DATA_DIR, 'events.json');
 const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
+const PROXY_CACHE_DIR = path.join(DATA_DIR, 'proxy-cache');
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+if (!fs.existsSync(PROXY_CACHE_DIR)) fs.mkdirSync(PROXY_CACHE_DIR, { recursive: true });
 
-app.use('/uploads', express.static(UPLOADS_DIR, {
-    maxAge: '30d',
-    immutable: true
-}));
+app.use('/uploads', express.static(UPLOADS_DIR, { maxAge: '30d', immutable: true }));
 
 const upload = multer({
     storage: multer.memoryStorage(),
@@ -154,15 +154,49 @@ app.post('/api/upload-thumbnail', apiAuth, upload.single('thumbnail'), async (re
     }
 });
 
+// ---------- 🔥 NEW: Fetch a remote thumbnail and store locally ----------
+const ALLOWED_IMAGE_HOST = /^https?:\/\/([\w-]+\.)*(dhresource\.com|dhgate\.com|alicdn\.com)(\/|$)/i;
+
+app.post('/api/fetch-thumbnail', apiAuth, async (req, res) => {
+    const { url } = req.body || {};
+    if (!url || !ALLOWED_IMAGE_HOST.test(url)) {
+        return res.status(400).json({ error: 'URL not allowed' });
+    }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    try {
+        const response = await fetch(url, {
+            signal: controller.signal,
+            headers: {
+                'Referer': 'https://www.dhgate.com/',
+                'User-Agent': 'Mozilla/5.0 (compatible; DHGateVault/1.0)'
+            }
+        });
+        clearTimeout(timeout);
+        if (!response.ok) return res.status(404).json({ error: 'Fetch failed' });
+
+        const buffer = Buffer.from(await response.arrayBuffer());
+        const filename = `thumbnail-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`;
+        const outputPath = path.join(UPLOADS_DIR, filename);
+
+        await sharp(buffer)
+            .resize({ width: 600, height: 600, fit: 'inside', withoutEnlargement: true })
+            .webp({ quality: 75 })
+            .toFile(outputPath);
+
+        res.json({ url: `/uploads/${filename}` });
+    } catch (err) {
+        clearTimeout(timeout);
+        console.error('fetch-thumbnail failed:', err);
+        res.status(500).json({ error: 'Failed' });
+    }
+});
+
 // ---------- Products ----------
 function readJSON(file, fallback) {
-    try {
-        return JSON.parse(fs.readFileSync(file, 'utf8'));
-    } catch {
-        return fallback;
-    }
+    try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
+    catch { return fallback; }
 }
-
 function writeJSON(file, data) {
     fs.writeFileSync(file, JSON.stringify(data, null, 2));
 }
@@ -213,11 +247,8 @@ function scheduleEventsSave() {
 
 function flushEvents() {
     if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
-    try {
-        fs.writeFileSync(EVENTS_FILE, JSON.stringify(eventsCache, null, 2));
-    } catch (err) {
-        console.error('Event flush failed:', err);
-    }
+    try { fs.writeFileSync(EVENTS_FILE, JSON.stringify(eventsCache, null, 2)); }
+    catch (err) { console.error('Event flush failed:', err); }
 }
 
 process.on('SIGTERM', () => { flushEvents(); process.exit(0); });
@@ -229,9 +260,7 @@ app.post('/api/event', (req, res) => {
         return res.status(400).json({ error: 'Invalid event' });
     }
     eventsCache.push({ ...event, timestamp: new Date().toISOString() });
-    if (eventsCache.length > EVENTS_MAX) {
-        eventsCache = eventsCache.slice(-EVENTS_MAX);
-    }
+    if (eventsCache.length > EVENTS_MAX) eventsCache = eventsCache.slice(-EVENTS_MAX);
     scheduleEventsSave();
     res.json({ success: true });
 });
@@ -247,15 +276,22 @@ app.delete('/api/events', apiAuth, (req, res) => {
     res.json({ success: true });
 });
 
-// ---------- Image proxy (hardened) ----------
-const ALLOWED_IMAGE_HOST = /^https?:\/\/([\w-]+\.)*(dhresource\.com|dhgate\.com|alicdn\.com)(\/|$)/i;
-
+// ---------- Image proxy (hardened + disk cache) ----------
 app.get('/api/image', async (req, res) => {
     const imageUrl = req.query.url;
     if (!imageUrl) return res.status(400).json({ error: 'Missing url parameter' });
-
     if (!ALLOWED_IMAGE_HOST.test(imageUrl)) {
         return res.status(400).json({ error: 'Host not allowed' });
+    }
+
+    // 🔥 Disk cache: same URL = same file = served from disk on 2nd+ hits
+    const hash = crypto.createHash('sha256').update(imageUrl).digest('hex').slice(0, 24);
+    const cachedPath = path.join(PROXY_CACHE_DIR, hash + '.webp');
+
+    if (fs.existsSync(cachedPath)) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        res.setHeader('Content-Type', 'image/webp');
+        return fs.createReadStream(cachedPath).pipe(res);
     }
 
     const controller = new AbortController();
@@ -264,13 +300,13 @@ app.get('/api/image', async (req, res) => {
     try {
         const response = await fetch(imageUrl, {
             signal: controller.signal,
-            headers: { 'Referer': 'https://www.dhgate.com/', 'User-Agent': 'Mozilla/5.0 (compatible; DHGateVault/1.0)' }
+            headers: {
+                'Referer': 'https://www.dhgate.com/',
+                'User-Agent': 'Mozilla/5.0 (compatible; DHGateVault/1.0)'
+            }
         });
         clearTimeout(timeout);
-
-        if (!response.ok) {
-            return res.status(404).json({ error: 'Image not found' });
-        }
+        if (!response.ok) return res.status(404).json({ error: 'Image not found' });
 
         const contentLength = Number(response.headers.get('content-length') || 0);
         if (contentLength > 5 * 1024 * 1024) {
@@ -278,11 +314,13 @@ app.get('/api/image', async (req, res) => {
         }
 
         const buffer = Buffer.from(await response.arrayBuffer());
-
         const processed = await sharp(buffer)
             .resize({ width: 400, height: 400, fit: 'inside', withoutEnlargement: true })
             .webp({ quality: 70 })
             .toBuffer();
+
+        // Save to disk cache (non-blocking)
+        fs.promises.writeFile(cachedPath, processed).catch(() => {});
 
         res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
         res.setHeader('Content-Type', 'image/webp');
@@ -297,8 +335,8 @@ app.get('/api/image', async (req, res) => {
     }
 });
 
-// ---------- Static denylist (MUST come before express.static) ----------
-const PROTECTED_FILES = /^\/(server\.js|package(-lock)?\.json|products\.json|events\.json)$/;
+// ---------- Static denylist ----------
+const PROTECTED_FILES = /^\/(server\.js|package(-lock)?\.json|products\.json|events\.json|proxy-cache\/|uploads\/.*\.js)$/;
 app.use((req, res, next) => {
     if (PROTECTED_FILES.test(req.path)) return res.status(404).end();
     next();
