@@ -200,12 +200,33 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ---------- Lightbox ----------
     window.openLightbox = function (src) {
+        if (!src) return;
         $lightboxImage.src = getProxiedImage(src);
         $lightboxOverlay.classList.add('modal-overlay--active');
         try {
-            const thumb = document.querySelector(`img[src="${src}"]`);
-            const card = thumb?.closest('.product-card');
-            const productId = card?.dataset?.productId;
+            // Find the product card by ID via the src we were given — use CSS.escape
+            // so base64 data URLs (which contain quotes/slashes) don't break the selector
+            let productId = null;
+            const safeSrc = CSS.escape(src);
+            const thumb = document.querySelector(
+                `.product-card__review-thumb[data-lightbox-src="${safeSrc}"]`
+            );
+            if (thumb) {
+                const card = thumb.closest('.product-card');
+                productId = card?.dataset?.productId || null;
+            } else {
+                // Fallback: find a card whose main image matches
+                const mainImgs = document.querySelectorAll('.product-card__main-img');
+                for (const img of mainImgs) {
+                    const card = img.closest('.product-card');
+                    if (!card) continue;
+                    const product = (_productCache || []).find(x => x.id === card.dataset.productId);
+                    if (product && product.thumbnailUrl === src) {
+                        productId = card.dataset.productId;
+                        break;
+                    }
+                }
+            }
             if (productId && isUniqueImageView(productId, src)) {
                 recordEvent('image_view', productId, { image: src });
             }
@@ -229,7 +250,6 @@ document.addEventListener('DOMContentLoaded', function () {
     // ---------- Render products (build once, toggle display on filter) ----------
     async function renderProducts(filter = 'all') {
         if (!_cardsBuilt) {
-            // First-ever render: show skeleton, fetch, build once
             $productsGrid.innerHTML = `
                 <div class="product-card skeleton"></div>
                 <div class="product-card skeleton"></div>
@@ -250,7 +270,6 @@ document.addEventListener('DOMContentLoaded', function () {
             });
             _cardsBuilt = true;
 
-            // Preload first product image
             if (products.length > 0 && products[0].thumbnailUrl) {
                 const proxiedUrl = getProxiedImage(products[0].thumbnailUrl);
                 const existing = document.querySelector('link[rel="preload"][as="image"]');
@@ -264,7 +283,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // Filter via display toggle — instant, no DOM rebuild
         let visible = 0;
         $productsGrid.querySelectorAll('.product-card').forEach(card => {
             const matchCat = filter === 'all' || card.dataset.category === filter;
@@ -343,6 +361,18 @@ document.addEventListener('DOMContentLoaded', function () {
                     </button>
                 </div>
             </div>`;
+
+        // 🔥 FIX: Direct click listener on the main thumbnail — opens lightbox
+        // with the ORIGINAL thumbnailUrl (not the already-proxied src), so
+        // getProxiedImage() proxies it exactly once instead of double-wrapping.
+        const mainImg = card.querySelector('.product-card__main-img');
+        if (mainImg) {
+            mainImg.style.cursor = 'zoom-in';
+            mainImg.addEventListener('click', (e) => {
+                e.stopPropagation();
+                window.openLightbox(p.thumbnailUrl);
+            });
+        }
 
         card.addEventListener('mousemove', e => {
             const rect = card.getBoundingClientRect();
@@ -436,7 +466,7 @@ document.addEventListener('DOMContentLoaded', function () {
         currentRate = await fetchExchangeRate(currency);
         setCookie('preferred_currency', currency, 365);
         updateCurrencyDisplay(currency);
-        convertPrices(); // prices update once rates resolve
+        convertPrices();
 
         const dropdown = document.getElementById('currencyDropdown');
         const trigger = dropdown?.querySelector('.currency-dropdown__trigger');
@@ -525,11 +555,9 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        const card = e.target.closest('.product-card');
-        if (card && card.dataset.productId) {
-            const mainImg = card.querySelector('.product-card__main-img');
-            if (mainImg) window.openLightbox(mainImg.getAttribute('data-original-src') || mainImg.src);
-        }
+        // NOTE: The main-thumbnail lightbox click is handled by a direct listener
+        // attached in createCard(). No delegated fallback here — that used to
+        // double-proxy the URL and hit the SSRF whitelist.
     });
 
     // ---------- Filters ----------
@@ -572,10 +600,10 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // ---------- Start (render immediately, currency in background) ----------
+    // ---------- Start ----------
     incrementPageViews();
-    renderProducts();       // fires NOW — no waiting for currency
-    initCurrency();         // fire-and-forget: updates prices when it resolves
+    renderProducts();
+    initCurrency();
 });
 
 // ---------- Cookie consent ----------
