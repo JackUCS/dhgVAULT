@@ -177,9 +177,9 @@ function writeJSON(file, data) {
 }
 
 app.get('/api/products', (req, res) => {
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
+    // Cache for 5 minutes (300s) on the storefront.
+    // The admin panel bypasses this using ?t=Date.now()
+    res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
     res.json(readJSON(PRODUCTS_FILE, []));
 });
 

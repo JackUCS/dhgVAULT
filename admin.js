@@ -23,6 +23,33 @@ document.addEventListener('DOMContentLoaded', function() {
         return Array.from(new Uint8Array(d)).map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
+    // 🔥 Helper: Compress image using Canvas API before Base64 conversion
+    function compressImage(file, maxWidth, quality) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const scaleSize = maxWidth / img.width;
+                    canvas.width = maxWidth;
+                    canvas.height = img.height * scaleSize;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                    // Convert to JPEG with specified quality (0.7 = 70%)
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+                    resolve(compressedBase64);
+                };
+                img.onerror = reject;
+            };
+            reader.onerror = reject;
+        });
+    }
+
     function init() {
         const btnLogout = document.getElementById('btnLogout');
         const addForm = document.getElementById('addProductForm');
@@ -157,13 +184,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (window.location.protocol.startsWith('http')) {
             try {
                 const url = '/api/events?t=' + Date.now() + '&r=' + Math.random();
-                console.log('📊 Fetching events from:', url);
                 const res = await fetch(url);
-                if (res.ok) {
-                    const data = await res.json();
-                    console.log('📊 Events fetched:', data.length);
-                    return data;
-                }
+                if (res.ok) return await res.json();
             } catch (e) {
                 console.warn('Server events fetch failed:', e);
             }
@@ -177,8 +199,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const wishlistMap = {};
         let pageViewCount = 0;
 
-        console.log('📊 Processing', events.length, 'events');
-
         events.forEach(ev => {
             if (ev.type === 'click') {
                 clickMap[ev.productId] = (clickMap[ev.productId] || 0) + 1;
@@ -189,14 +209,10 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if (ev.type === 'wishlist') {
                 if (ev.action === 'added') {
                     wishlistMap[ev.productId] = (wishlistMap[ev.productId] || 0) + 1;
-                    console.log(`💖 Wishlist ADD: ${ev.productId} (total: ${wishlistMap[ev.productId]})`);
-                } else if (ev.action === 'removed') {
-                    console.log(`💖 Wishlist REMOVE: ${ev.productId} (ignored for total adds)`);
                 }
             }
         });
 
-        console.log('📊 Wishlist map (total adds):', wishlistMap);
         return { clickMap, viewMap, wishlistMap, pageViewCount };
     }
 
@@ -205,9 +221,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!select) return;
 
         select.innerHTML = '<option value="all">All Brands</option>';
-
-        const brands = [...new Set(products.map(p => p.brand).filter(Boolean))];
-        brands.sort();
+        const brands = [...new Set(products.map(p => p.brand).filter(Boolean))].sort();
 
         brands.forEach(brand => {
             const opt = document.createElement('option');
@@ -215,29 +229,17 @@ document.addEventListener('DOMContentLoaded', function() {
             opt.textContent = brand;
             select.appendChild(opt);
         });
-        
-        console.log(`✅ Brand filter populated with ${brands.length} brands.`);
     }
 
     function renderBarChart(products, clickMap) {
         const chart = document.getElementById('barChart');
         const tooltip = document.getElementById('chartTooltip');
-        if (!chart) {
-            console.error('❌ Bar chart element not found!');
-            return;
-        }
+        if (!chart) return;
         chart.innerHTML = '';
 
         const totalClicks = Object.values(clickMap).reduce((a, b) => a + b, 0);
-        
         if (totalClicks === 0) {
-            chart.innerHTML = `
-                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; height:100px; color:var(--text-muted);">
-                    <i class="bi bi-bar-chart" style="font-size:2rem; margin-bottom:8px; opacity:0.4;"></i>
-                    <span>No click data yet</span>
-                    <span style="font-size:0.75rem;">Click "Shop Now" on your storefront to start tracking</span>
-                </div>
-            `;
+            chart.innerHTML = `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; height:100px; color:var(--text-muted);"><i class="bi bi-bar-chart" style="font-size:2rem; margin-bottom:8px; opacity:0.4;"></i><span>No click data yet</span></div>`;
             return;
         }
 
@@ -245,23 +247,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         function updateTooltipPosition(e) {
             if (!tooltip) return;
-            let x = e.clientX;
-            let y = e.clientY - 40;
-            
-            const tooltipRect = tooltip.getBoundingClientRect();
-            const tw = tooltipRect.width || 150;
-            const th = tooltipRect.height || 40;
-            
-            if (x + tw / 2 > window.innerWidth) {
-                x = window.innerWidth - tw / 2 - 10;
-            }
-            if (x - tw / 2 < 0) {
-                x = tw / 2 + 10;
-            }
-            if (y < 10) {
-                y = e.clientY + 20;
-            }
-            
+            let x = e.clientX, y = e.clientY - 40;
+            const tw = tooltip.getBoundingClientRect().width || 150;
+            if (x + tw / 2 > window.innerWidth) x = window.innerWidth - tw / 2 - 10;
+            if (x - tw / 2 < 0) x = tw / 2 + 10;
+            if (y < 10) y = e.clientY + 20;
             tooltip.style.left = x + 'px';
             tooltip.style.top = y + 'px';
         }
@@ -272,13 +262,6 @@ document.addEventListener('DOMContentLoaded', function() {
             bar.className = 'bar-chart__bar';
             const calculatedHeight = Math.max(12, (clicks / max) * 120);
             bar.style.height = calculatedHeight + 'px';
-            bar.style.minHeight = '12px';
-            bar.style.background = 'linear-gradient(to top, var(--accent), var(--accent-2))';
-            bar.style.borderRadius = '6px 6px 0 0';
-            bar.style.boxShadow = '0 0 8px rgba(99,102,241,0.15)';
-            bar.style.width = '100%';
-            bar.style.cursor = 'pointer';
-            bar.style.position = 'relative';
             bar.setAttribute('data-clicks', clicks);
             bar.setAttribute('data-title', p.title);
 
@@ -290,27 +273,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     updateTooltipPosition(e);
                 }
             });
-
             bar.addEventListener('mousemove', function(e) {
-                if (tooltip && tooltip.classList.contains('visible')) {
-                    updateTooltipPosition(e);
-                }
+                if (tooltip && tooltip.classList.contains('visible')) updateTooltipPosition(e);
             });
-
             bar.addEventListener('mouseleave', function() {
-                if (tooltip) {
-                    tooltip.classList.remove('visible');
-                    tooltip.style.display = 'none';
-                }
+                if (tooltip) { tooltip.classList.remove('visible'); tooltip.style.display = 'none'; }
             });
 
             const label = document.createElement('div');
             label.className = 'bar-chart__label';
             label.textContent = p.title.substr(0, 8);
-            label.style.textAlign = 'center';
-            label.style.fontSize = '0.6rem';
-            label.style.color = 'var(--text-muted)';
-            label.style.marginTop = '4px';
 
             const wrap = document.createElement('div');
             wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;flex:1;min-width:20px;';
@@ -321,13 +293,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async function loadData() {
-        console.log('🔄 Loading data...');
         const products = await getProducts();
         const events = await getEvents();
         const { clickMap, viewMap, wishlistMap, pageViewCount } = calculateMetrics(events);
-
-        console.log(`📊 Loaded ${products.length} products, ${events.length} events`);
-        console.log('📊 Wishlist data:', wishlistMap);
 
         document.getElementById('adminTotalProducts').textContent = products.length;
         document.getElementById('adminTotalClicks').textContent = Object.values(clickMap).reduce((s, c) => s + c, 0);
@@ -335,12 +303,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const totalWishlists = Object.values(wishlistMap).reduce((sum, val) => sum + val, 0);
         const wishlistStatEl = document.getElementById('adminTotalWishlists');
-        if (wishlistStatEl) {
-            wishlistStatEl.textContent = totalWishlists;
-            console.log(`💖 Total Wishlist Adds: ${totalWishlists}`);
-        } else {
-            console.log(`💖 Total Wishlist Adds: ${totalWishlists}`);
-        }
+        if (wishlistStatEl) wishlistStatEl.textContent = totalWishlists;
 
         let top = '—', topC = 0;
         products.forEach(p => {
@@ -354,17 +317,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const brandFilter = document.getElementById('brandFilter');
         if (brandFilter) {
-            brandFilter.onchange = function() {
-                renderTable(products, clickMap, wishlistMap);
-            };
+            brandFilter.onchange = function() { renderTable(products, clickMap, wishlistMap); };
         }
-
         renderTable(products, clickMap, wishlistMap);
 
         const creds = JSON.parse(localStorage.getItem(STORAGE_VAULT_CREDS) || '{}');
         if (creds.username) document.getElementById('vaultUsernameInput').value = creds.username;
-        
-        console.log('✅ Data loaded successfully');
         return true;
     }
 
@@ -376,9 +334,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const selectedBrand = brandFilter?.value || 'all';
 
         let filtered = products;
-        if (selectedBrand !== 'all') {
-            filtered = products.filter(p => p.brand === selectedBrand);
-        }
+        if (selectedBrand !== 'all') filtered = products.filter(p => p.brand === selectedBrand);
 
         const sorted = [...filtered].sort((a, b) => (clickMap[b.id] || 0) - (clickMap[a.id] || 0));
 
@@ -403,71 +359,51 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 🔥 FINAL: handleAddProduct with base64 thumbnail (exactly like review photos)
     async function handleAddProduct(e) {
         e.preventDefault();
-        console.log('🚀 handleAddProduct START');
-
         let existingProduct = null;
         if (editingId) {
             const products = await getProducts();
             existingProduct = products.find(p => p.id === editingId);
         }
 
-        // 🔥 Get thumbnail file and URL field
         const thumbnailFile = document.getElementById('inputThumbnailFile');
         const thumbnailUrlInput = document.getElementById('inputThumbnailUrl');
         let thumbnailUrl = thumbnailUrlInput.value.trim();
 
-        console.log('📂 Thumbnail file input files count:', thumbnailFile?.files?.length || 0);
-
-        // 🔥 If a file is selected, convert to base64
+        // 🔥 Compress and convert thumbnail to base64
         if (thumbnailFile && thumbnailFile.files.length > 0) {
             const file = thumbnailFile.files[0];
-            console.log('📸 Converting thumbnail to base64:', file.name, file.size);
             try {
-                const reader = new FileReader();
-                thumbnailUrl = await new Promise((resolve, reject) => {
-                    reader.onload = () => resolve(reader.result);
-                    reader.onerror = reject;
-                    reader.readAsDataURL(file);
-                });
-                console.log('✅ Thumbnail converted to base64 (length:', thumbnailUrl.length, ')');
-                showToast('✅ Thumbnail uploaded!');
+                thumbnailUrl = await compressImage(file, 600, 0.7); // Max 600px wide, 70% quality
+                showToast('✅ Thumbnail uploaded and compressed!');
             } catch (err) {
-                console.error('❌ Base64 conversion failed:', err);
+                console.error('❌ Thumbnail compression failed:', err);
                 showToast('❌ Upload failed: ' + err.message);
                 return;
             }
-        } else {
-            console.log('ℹ️ No file selected – using URL:', thumbnailUrl);
         }
 
-        // 🔥 Validate
         if (!thumbnailUrl) {
             showToast('❌ Please provide a thumbnail URL or upload an image.');
             return;
         }
 
-        console.log('📦 Final thumbnailUrl (base64 or URL) length:', thumbnailUrl.length);
-
-        // Handle review photos (already base64)
+        // Handle review photos - also compress them!
         const files = document.getElementById('inputReviewPhotos')?.files || [];
         let reviewImages = existingProduct?.reviewImages || [];
         if (files.length > 0) {
             const newImages = [];
             for (let f of files) {
-                const b64 = await new Promise(r => {
-                    const rd = new FileReader();
-                    rd.onload = () => r(rd.result);
-                    rd.readAsDataURL(f);
-                });
-                newImages.push(b64);
+                try {
+                    const compressed = await compressImage(f, 1200, 0.7); // Max 1200px wide, 70% quality
+                    newImages.push(compressed);
+                } catch (err) {
+                    console.warn('Failed to compress review photo:', err);
+                }
             }
             reviewImages = newImages;
         }
-
-        const brandValue = document.getElementById('inputBrand').value.trim();
 
         const productData = {
             dhgateLink: document.getElementById('inputDhgateLink').value,
@@ -476,45 +412,28 @@ document.addEventListener('DOMContentLoaded', function() {
             price: document.getElementById('inputPrice').value,
             affiliateLink: document.getElementById('inputAffiliateLink').value,
             category: document.getElementById('inputCategory').value,
-            brand: brandValue,
+            brand: document.getElementById('inputBrand').value.trim(),
             rating: document.getElementById('inputRating').value,
             reviewImages: reviewImages,
             createdAt: existingProduct?.createdAt || new Date().toISOString()
         };
 
         const product = { id: editingId || 'prod_' + Date.now(), ...productData };
-
-        console.log('📦 Saving product, thumbnailUrl length:', product.thumbnailUrl?.length || 0);
-
-        const serverSuccess = await upsertProductToServer(product);
-
-        if (!serverSuccess) {
-            console.warn('⚠️ Server save may have failed, but continuing with local cache');
-        }
+        await upsertProductToServer(product);
 
         const localProduct = { ...product };
-        delete localProduct.reviewImages;
-
+        delete localProduct.reviewImages; // Don't cache review images in localStorage to prevent quota errors
         try {
             let products = JSON.parse(localStorage.getItem(STORAGE_PRODUCTS) || '[]');
             const idx = products.findIndex(p => p.id === localProduct.id);
-            if (idx >= 0) {
-                products[idx] = localProduct;
-            } else {
-                products.unshift(localProduct);
-            }
+            if (idx >= 0) products[idx] = localProduct;
+            else products.unshift(localProduct);
             localStorage.setItem(STORAGE_PRODUCTS, JSON.stringify(products));
-        } catch (err) {
-            console.warn('Local product cache skipped (quota?)');
-        }
+        } catch (err) { console.warn('Local cache skipped'); }
 
-        if (editingId) {
-            showToast('✅ Product updated!');
-            editingId = null;
-            document.querySelector('#addProductForm button[type="submit"]').innerHTML = '<i class="bi bi-cloud-upload"></i> Add Product';
-        } else {
-            showToast('✅ Product added!');
-        }
+        showToast(editingId ? '✅ Product updated!' : '✅ Product added!');
+        editingId = null;
+        document.querySelector('#addProductForm button[type="submit"]').innerHTML = '<i class="bi bi-cloud-upload"></i> Add Product';
 
         await loadData();
         e.target.reset();
@@ -536,11 +455,7 @@ document.addEventListener('DOMContentLoaded', function() {
         container.innerHTML = '';
         for (let f of this.files) {
             const r = new FileReader();
-            r.onload = e => { 
-                const img = document.createElement('img'); 
-                img.src = e.target.result; 
-                container.appendChild(img); 
-            };
+            r.onload = e => { const img = document.createElement('img'); img.src = e.target.result; container.appendChild(img); };
             r.readAsDataURL(f);
         }
     }
@@ -557,11 +472,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function resetAnalytics() {
         if (!confirm('Reset all analytics?')) return;
-        
-        fetch('/api/events', {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' }
-        })
+        fetch('/api/events', { method: 'DELETE' })
         .then(res => res.json())
         .then(data => {
             if (data.success) {
@@ -569,25 +480,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 localStorage.removeItem(STORAGE_ANALYTICS);
                 localStorage.removeItem(STORAGE_EVENTS);
                 loadData();
-            } else {
-                showToast('❌ Reset failed');
-            }
+            } else showToast('❌ Reset failed');
         })
-        .catch(err => {
-            console.error('Reset error:', err);
-            showToast('❌ Reset failed');
-        });
+        .catch(err => { console.error('Reset error:', err); showToast('❌ Reset failed'); });
     }
 
     window.deleteProduct = async function(id) {
         if (!confirm('Delete this product?')) return;
-
         await deleteProductFromServer(id);
-
         let products = JSON.parse(localStorage.getItem(STORAGE_PRODUCTS) || '[]');
         products = products.filter(p => p.id !== id);
         localStorage.setItem(STORAGE_PRODUCTS, JSON.stringify(products));
-
         await loadData();
         showToast('🗑️ Product deleted');
     };
@@ -606,33 +509,19 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('inputCategory').value = product.category || 'shirts';
         document.getElementById('inputBrand').value = product.brand || '';
         document.getElementById('inputRating').value = product.rating || 4.5;
-        
-        // Reset file input
         document.getElementById('inputThumbnailFile').value = '';
         
         const reviewContainer = document.getElementById('reviewPreviews');
         if (reviewContainer) {
             if (product.reviewImages && product.reviewImages.length > 0) {
-                reviewContainer.innerHTML = product.reviewImages.map(img => 
-                    `<img src="${img}" alt="review" style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--glass-border);">`
-                ).join('');
+                reviewContainer.innerHTML = product.reviewImages.map(img => `<img src="${img}" alt="review" style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--glass-border);">`).join('');
                 reviewContainer.innerHTML += `<div style="font-size:0.7rem;color:var(--text-muted);width:100%;margin-top:4px;">${product.reviewImages.length} existing image(s). Upload new ones to replace.</div>`;
-            } else {
-                reviewContainer.innerHTML = '';
-            }
+            } else reviewContainer.innerHTML = '';
         }
         
         const submitBtn = document.querySelector('#addProductForm button[type="submit"]');
         submitBtn.innerHTML = '<i class="bi bi-pencil-square"></i> Update Product';
-        
-        const collapsible = document.querySelector('.collapsible');
-        if (collapsible && !collapsible.classList.contains('collapsible--open')) {
-            collapsible.querySelector('.collapsible__trigger').click();
-        }
-        
         window.scrollTo({ top: document.getElementById('addProductForm').offsetTop - 100, behavior: 'smooth' });
-        
-        console.log(`✏️ Editing product: "${product.title}" with brand "${product.brand}" and ${product.reviewImages?.length || 0} images`);
     };
 
     init();

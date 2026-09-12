@@ -132,10 +132,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const eventBuffer = [];
 
     // ---------- data helpers ----------
+    // 🔥 UPDATED: Removed ?t=Date.now() so the browser can cache products (server sends Cache-Control: max-age=300)
     async function getProducts() {
         if (window.location.protocol.startsWith('http')) {
             try {
-                const res = await fetch('/api/products?t=' + Date.now());
+                const res = await fetch('/api/products');
                 if (res.ok) return await res.json();
             } catch (e) {
                 console.warn('Server product fetch failed, using local storage');
@@ -272,8 +273,18 @@ document.addEventListener('DOMContentLoaded', function () {
         setTimeout(() => t.remove(), 2000);
     }
 
-    // ---------- 🔥 renderProducts – passes index to createCard + preload LCP ----------
+    // ---------- 🔥 UPDATED: renderProducts with Skeleton Loader ----------
     async function renderProducts(filter = 'all') {
+        // 🔥 Show skeleton loaders immediately (perceived performance boost)
+        $productsGrid.innerHTML = `
+            <div class="product-card skeleton"></div>
+            <div class="product-card skeleton"></div>
+            <div class="product-card skeleton"></div>
+            <div class="product-card skeleton"></div>
+        `;
+        $productsGrid.style.display = '';
+        $emptyState.style.display = 'none';
+
         const products = await getProducts();
         let filtered = products;
         if (filter !== 'all') {
