@@ -15,10 +15,11 @@ const PORT = process.env.PORT || 3000;
 
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
 const ADMIN_PASS = process.env.ADMIN_PASS || 'change-me-now';
+const ADMIN_PATH = process.env.ADMIN_PATH || '/dhgate-admin-x7k9p2';
 
 app.use(compression());
 
-// Security Headers
+// ---------- Security headers ----------
 app.use((req, res, next) => {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
@@ -40,7 +41,7 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ limit: '5mb', extended: true }));
 
-// Data directory
+// ---------- Data directory ----------
 const DATA_DIR = process.env.DATA_DIR || __dirname;
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
@@ -59,32 +60,29 @@ const upload = multer({
     limits: { fileSize: 10 * 1024 * 1024 }
 });
 
-// ---------- 🔥 ADMIN ROUTE – MUST COME BEFORE clean‑URL ----------
-const ADMIN_PATH = process.env.ADMIN_PATH || '/dhgate-admin-x7k9p2';
+// ---------- Auth ----------
+const adminAuth = basicAuth({
+    users: { [ADMIN_USER]: ADMIN_PASS },
+    challenge: true,
+    realm: 'Admin Area'
+});
 
-// Block the old /admin path completely (returns 404)
+const apiAuth = basicAuth({
+    users: { [ADMIN_USER]: ADMIN_PASS },
+    challenge: false,
+    realm: 'Admin Area'
+});
+
+// ---------- Admin routes ----------
 app.use('/admin', (req, res) => res.status(404).end());
+app.use('/admin.html', adminAuth);
+app.use(ADMIN_PATH, adminAuth);
 
-// Protect the actual admin.html file (in case someone tries to access it directly)
-app.use('/admin.html', basicAuth({
-    users: { [ADMIN_USER]: ADMIN_PASS },
-    challenge: true,
-    realm: 'Admin Area'
-}));
-
-// Protect your custom admin path
-app.use(ADMIN_PATH, basicAuth({
-    users: { [ADMIN_USER]: ADMIN_PASS },
-    challenge: true,
-    realm: 'Admin Area'
-}));
-
-// Serve the admin page at the custom path
 app.get(ADMIN_PATH, (req, res) => {
     res.sendFile(path.join(__dirname, 'admin.html'));
 });
 
-// ---- Clean‑URL middleware (now AFTER admin routes) ----
+// ---------- Clean-URL middleware ----------
 app.use((req, res, next) => {
     if (req.path.startsWith('/api/')) return next();
     if (!path.extname(req.path) && req.path !== '/') {
@@ -103,12 +101,8 @@ app.get('/api/location', (req, res) => {
         apiRes.on('end', () => {
             try {
                 const json = JSON.parse(data);
-                if (json.status === 'success') {
-                    res.json({ countryCode: json.countryCode });
-                } else {
-                    res.json({ countryCode: 'US' });
-                }
-            } catch (e) {
+                res.json({ countryCode: json.status === 'success' ? json.countryCode : 'US' });
+            } catch {
                 res.json({ countryCode: 'US' });
             }
         });
@@ -117,15 +111,15 @@ app.get('/api/location', (req, res) => {
     });
 });
 
-// ---------- Upload Review Photos ----------
-app.post('/api/upload-review-photos', upload.array('photos', 10), async (req, res) => {
+// ---------- Uploads (admin only) ----------
+app.post('/api/upload-review-photos', apiAuth, upload.array('photos', 10), async (req, res) => {
     try {
         if (!req.files || req.files.length === 0) {
             return res.status(400).json({ error: 'No files uploaded' });
         }
         const urls = [];
         for (const file of req.files) {
-            const filename = `review-${Date.now()}-${Math.random().toString(36).substr(2, 6)}.webp`;
+            const filename = `review-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`;
             const outputPath = path.join(UPLOADS_DIR, filename);
             await sharp(file.buffer)
                 .resize({ width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true })
@@ -135,19 +129,17 @@ app.post('/api/upload-review-photos', upload.array('photos', 10), async (req, re
         }
         res.json({ urls });
     } catch (err) {
-        console.error('Upload conversion failed:', err);
+        console.error('Review upload failed:', err);
         res.status(500).json({ error: 'Conversion failed' });
     }
 });
 
-// ---------- 🔥 NEW: Upload Thumbnail (main product image) ----------
-app.post('/api/upload-thumbnail', upload.single('thumbnail'), async (req, res) => {
+app.post('/api/upload-thumbnail', apiAuth, upload.single('thumbnail'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
         }
-
-        const filename = `thumbnail-${Date.now()}-${Math.random().toString(36).substr(2, 6)}.webp`;
+        const filename = `thumbnail-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`;
         const outputPath = path.join(UPLOADS_DIR, filename);
 
         await sharp(req.file.buffer)
@@ -155,19 +147,18 @@ app.post('/api/upload-thumbnail', upload.single('thumbnail'), async (req, res) =
             .webp({ quality: 70 })
             .toFile(outputPath);
 
-        const url = `/uploads/${filename}`;
-        res.json({ url });
+        res.json({ url: `/uploads/${filename}` });
     } catch (err) {
         console.error('Thumbnail upload failed:', err);
         res.status(500).json({ error: 'Upload failed' });
     }
 });
 
-// ---------- Products API ----------
+// ---------- Products ----------
 function readJSON(file, fallback) {
     try {
         return JSON.parse(fs.readFileSync(file, 'utf8'));
-    } catch (e) {
+    } catch {
         return fallback;
     }
 }
@@ -177,13 +168,11 @@ function writeJSON(file, data) {
 }
 
 app.get('/api/products', (req, res) => {
-    // Cache for 5 minutes (300s) on the storefront.
-    // The admin panel bypasses this using ?t=Date.now()
     res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
     res.json(readJSON(PRODUCTS_FILE, []));
 });
 
-app.post('/api/products', (req, res) => {
+app.post('/api/products', apiAuth, (req, res) => {
     const product = req.body;
     if (!product || !product.id) return res.status(400).json({ error: 'Invalid product' });
     const products = readJSON(PRODUCTS_FILE, []);
@@ -194,7 +183,7 @@ app.post('/api/products', (req, res) => {
     res.json({ success: true });
 });
 
-app.delete('/api/products/:id', (req, res) => {
+app.delete('/api/products/:id', apiAuth, (req, res) => {
     const id = req.params.id;
     let products = readJSON(PRODUCTS_FILE, []);
     products = products.filter(p => p.id !== id);
@@ -202,48 +191,96 @@ app.delete('/api/products/:id', (req, res) => {
     res.json({ success: true });
 });
 
-// ---------- Analytics API ----------
+// ---------- Events (async + debounced) ----------
+const EVENTS_MAX = 50000;
+
+let eventsCache = (() => {
+    try { return JSON.parse(fs.readFileSync(EVENTS_FILE, 'utf8')); }
+    catch { return []; }
+})();
+
+let saveTimer = null;
+function scheduleEventsSave() {
+    if (saveTimer) return;
+    saveTimer = setTimeout(() => {
+        saveTimer = null;
+        const snapshot = JSON.stringify(eventsCache, null, 2);
+        fs.promises.writeFile(EVENTS_FILE, snapshot).catch(err => {
+            console.error('Event save failed:', err);
+        });
+    }, 1000);
+}
+
+function flushEvents() {
+    if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+    try {
+        fs.writeFileSync(EVENTS_FILE, JSON.stringify(eventsCache, null, 2));
+    } catch (err) {
+        console.error('Event flush failed:', err);
+    }
+}
+
+process.on('SIGTERM', () => { flushEvents(); process.exit(0); });
+process.on('SIGINT', () => { flushEvents(); process.exit(0); });
+
 app.post('/api/event', (req, res) => {
     const event = req.body;
-    if (!event || !event.type || !event.productId) return res.status(400).json({ error: 'Invalid event' });
-    const events = readJSON(EVENTS_FILE, []);
-    events.push({ ...event, timestamp: new Date().toISOString() });
-    writeJSON(EVENTS_FILE, events);
+    if (!event || !event.type || !event.productId) {
+        return res.status(400).json({ error: 'Invalid event' });
+    }
+    eventsCache.push({ ...event, timestamp: new Date().toISOString() });
+    if (eventsCache.length > EVENTS_MAX) {
+        eventsCache = eventsCache.slice(-EVENTS_MAX);
+    }
+    scheduleEventsSave();
     res.json({ success: true });
 });
 
-app.get('/api/events', (req, res) => {
+app.get('/api/events', apiAuth, (req, res) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-    res.json(readJSON(EVENTS_FILE, []));
+    res.json(eventsCache);
 });
 
-app.delete('/api/events', (req, res) => {
-    writeJSON(EVENTS_FILE, []);
+app.delete('/api/events', apiAuth, (req, res) => {
+    eventsCache = [];
+    flushEvents();
     res.json({ success: true });
 });
 
-// ---------- 🔥 IMAGE PROXY (optimise DHGate images) ----------
+// ---------- Image proxy (hardened) ----------
+const ALLOWED_IMAGE_HOST = /^https?:\/\/([\w-]+\.)*(dhresource\.com|dhgate\.com|alicdn\.com)(\/|$)/i;
+
 app.get('/api/image', async (req, res) => {
     const imageUrl = req.query.url;
     if (!imageUrl) return res.status(400).json({ error: 'Missing url parameter' });
 
-    // Only allow http/https to prevent SSRF
-    if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
-        return res.status(400).json({ error: 'Invalid URL' });
+    if (!ALLOWED_IMAGE_HOST.test(imageUrl)) {
+        return res.status(400).json({ error: 'Host not allowed' });
     }
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+
     try {
-        const response = await fetch(imageUrl);
+        const response = await fetch(imageUrl, {
+            signal: controller.signal,
+            headers: { 'Referer': 'https://www.dhgate.com/', 'User-Agent': 'Mozilla/5.0 (compatible; DHGateVault/1.0)' }
+        });
+        clearTimeout(timeout);
+
         if (!response.ok) {
             return res.status(404).json({ error: 'Image not found' });
         }
 
-        const buffer = await response.arrayBuffer();
+        const contentLength = Number(response.headers.get('content-length') || 0);
+        if (contentLength > 5 * 1024 * 1024) {
+            return res.status(413).json({ error: 'Image too large' });
+        }
 
-        const processed = await sharp(Buffer.from(buffer))
-            .resize({ width: 400, height: 400, fit: 'inside' })
+        const buffer = Buffer.from(await response.arrayBuffer());
+
+        const processed = await sharp(buffer)
+            .resize({ width: 400, height: 400, fit: 'inside', withoutEnlargement: true })
             .webp({ quality: 70 })
             .toBuffer();
 
@@ -251,9 +288,20 @@ app.get('/api/image', async (req, res) => {
         res.setHeader('Content-Type', 'image/webp');
         res.send(processed);
     } catch (err) {
+        clearTimeout(timeout);
+        if (err.name === 'AbortError') {
+            return res.status(504).json({ error: 'Image fetch timed out' });
+        }
         console.error('Image proxy error:', err);
         res.status(500).json({ error: 'Image processing failed' });
     }
+});
+
+// ---------- Static denylist (MUST come before express.static) ----------
+const PROTECTED_FILES = /^\/(server\.js|package(-lock)?\.json|products\.json|events\.json)$/;
+app.use((req, res, next) => {
+    if (PROTECTED_FILES.test(req.path)) return res.status(404).end();
+    next();
 });
 
 // ---------- Static files ----------
@@ -270,10 +318,8 @@ app.use(express.static(__dirname, {
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 app.use('/.well-known', (req, res) => res.status(404).end());
 
-// ---------- 404 fallback ----------
-app.use((req, res) => {
-    res.status(404).end();
-});
+// ---------- 404 ----------
+app.use((req, res) => res.status(404).end());
 
 app.listen(PORT, () => {
     console.log(`✅ Server running on port ${PORT}`);

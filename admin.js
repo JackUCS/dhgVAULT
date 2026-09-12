@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const STORAGE_VAULT_CREDS = 'dhgatevault_vault_creds';
     const STORAGE_EVENTS = 'dhgatevault_events';
 
+    const isHttp = window.location.protocol.startsWith('http');
     const $toast = document.getElementById('toastContainer');
     let editingId = null;
 
@@ -23,7 +24,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return Array.from(new Uint8Array(d)).map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
-    // 🔥 Helper: Compress image using Canvas API before Base64 conversion
+    // Local-dev fallback: compress in browser to base64
     function compressImage(file, maxWidth, quality) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -36,18 +37,33 @@ document.addEventListener('DOMContentLoaded', function() {
                     const scaleSize = maxWidth / img.width;
                     canvas.width = maxWidth;
                     canvas.height = img.height * scaleSize;
-
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-                    // Convert to JPEG with specified quality (0.7 = 70%)
-                    const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
-                    resolve(compressedBase64);
+                    resolve(canvas.toDataURL('image/jpeg', quality));
                 };
                 img.onerror = reject;
             };
             reader.onerror = reject;
         });
+    }
+
+    // Server uploads (production)
+    async function uploadThumbnailFile(file) {
+        const fd = new FormData();
+        fd.append('thumbnail', file);
+        const res = await fetch('/api/upload-thumbnail', { method: 'POST', body: fd });
+        if (!res.ok) throw new Error(`Thumbnail upload failed (${res.status})`);
+        const data = await res.json();
+        return data.url;
+    }
+
+    async function uploadReviewPhotosFiles(files) {
+        const fd = new FormData();
+        for (const f of files) fd.append('photos', f);
+        const res = await fetch('/api/upload-review-photos', { method: 'POST', body: fd });
+        if (!res.ok) throw new Error(`Review photos upload failed (${res.status})`);
+        const data = await res.json();
+        return data.urls;
     }
 
     function init() {
@@ -85,19 +101,10 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
-        document.querySelectorAll('.collapsible__trigger').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const card = btn.closest('.collapsible');
-                card.classList.toggle('collapsible--open');
-                const arrow = btn.querySelector('.collapsible__arrow');
-                if (arrow) arrow.classList.toggle('bi-chevron-down');
-            });
-        });
-
+        // Collapsible sections
         document.querySelectorAll('.admin-section').forEach(section => {
             const title = section.querySelector('.admin-section__title');
             if (!title) return;
-
             if (!title.querySelector('.toggle-icon')) {
                 title.innerHTML += ' <i class="bi bi-chevron-down toggle-icon"></i>';
             }
@@ -110,9 +117,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 children.forEach(child => wrapper.appendChild(child));
                 section.appendChild(wrapper);
             }
-
             const icon = title.querySelector('.toggle-icon');
-
             function toggleSection(expand) {
                 if (typeof expand === 'undefined') {
                     section.classList.toggle('section-collapsed');
@@ -126,22 +131,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 localStorage.setItem(`admin_section_${section.id}`, section.classList.contains('section-collapsed') ? 'collapsed' : 'expanded');
             }
-
             title.addEventListener('click', () => toggleSection());
-
             const saved = localStorage.getItem(`admin_section_${section.id}`);
-            if (saved === 'collapsed') {
-                toggleSection(false);
-            } else {
-                toggleSection(true);
-            }
+            toggleSection(saved !== 'collapsed');
         });
     }
 
     window.loadData = loadData;
 
     async function getProducts() {
-        if (window.location.protocol.startsWith('http')) {
+        if (isHttp) {
             try {
                 const res = await fetch('/api/products?t=' + Date.now());
                 if (res.ok) return await res.json();
@@ -153,76 +152,59 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async function upsertProductToServer(product) {
-        if (window.location.protocol.startsWith('http')) {
-            try {
-                const res = await fetch('/api/products', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(product)
-                });
-                return res.ok;
-            } catch (e) {
-                console.warn('Server upsert failed:', e);
-            }
+        if (!isHttp) return false;
+        try {
+            const res = await fetch('/api/products', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(product)
+            });
+            return res.ok;
+        } catch (e) {
+            console.warn('Server upsert failed:', e);
+            return false;
         }
-        return false;
     }
 
     async function deleteProductFromServer(id) {
-        if (window.location.protocol.startsWith('http')) {
-            try {
-                const res = await fetch(`/api/products/${id}`, { method: 'DELETE' });
-                return res.ok;
-            } catch (e) {
-                console.warn('Server delete failed:', e);
-            }
+        if (!isHttp) return false;
+        try {
+            const res = await fetch(`/api/products/${id}`, { method: 'DELETE' });
+            return res.ok;
+        } catch (e) {
+            console.warn('Server delete failed:', e);
+            return false;
         }
-        return false;
     }
 
     async function getEvents() {
-        if (window.location.protocol.startsWith('http')) {
-            try {
-                const url = '/api/events?t=' + Date.now() + '&r=' + Math.random();
-                const res = await fetch(url);
-                if (res.ok) return await res.json();
-            } catch (e) {
-                console.warn('Server events fetch failed:', e);
-            }
+        if (!isHttp) return [];
+        try {
+            const res = await fetch('/api/events?t=' + Date.now());
+            if (res.ok) return await res.json();
+        } catch (e) {
+            console.warn('Server events fetch failed:', e);
         }
         return [];
     }
 
     function calculateMetrics(events) {
-        const clickMap = {};
-        const viewMap = {};
-        const wishlistMap = {};
+        const clickMap = {}, viewMap = {}, wishlistMap = {};
         let pageViewCount = 0;
-
         events.forEach(ev => {
-            if (ev.type === 'click') {
-                clickMap[ev.productId] = (clickMap[ev.productId] || 0) + 1;
-            } else if (ev.type === 'image_view') {
-                viewMap[ev.productId] = (viewMap[ev.productId] || 0) + 1;
-            } else if (ev.type === 'page_view') {
-                pageViewCount++;
-            } else if (ev.type === 'wishlist') {
-                if (ev.action === 'added') {
-                    wishlistMap[ev.productId] = (wishlistMap[ev.productId] || 0) + 1;
-                }
-            }
+            if (ev.type === 'click') clickMap[ev.productId] = (clickMap[ev.productId] || 0) + 1;
+            else if (ev.type === 'image_view') viewMap[ev.productId] = (viewMap[ev.productId] || 0) + 1;
+            else if (ev.type === 'page_view') pageViewCount++;
+            else if (ev.type === 'wishlist' && ev.action === 'added') wishlistMap[ev.productId] = (wishlistMap[ev.productId] || 0) + 1;
         });
-
         return { clickMap, viewMap, wishlistMap, pageViewCount };
     }
 
     function populateBrandFilter(products) {
         const select = document.getElementById('brandFilter');
         if (!select) return;
-
         select.innerHTML = '<option value="all">All Brands</option>';
         const brands = [...new Set(products.map(p => p.brand).filter(Boolean))].sort();
-
         brands.forEach(brand => {
             const opt = document.createElement('option');
             opt.value = brand;
@@ -260,10 +242,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const clicks = clickMap[p.id] || 0;
             const bar = document.createElement('div');
             bar.className = 'bar-chart__bar';
-            const calculatedHeight = Math.max(12, (clicks / max) * 120);
-            bar.style.height = calculatedHeight + 'px';
-            bar.setAttribute('data-clicks', clicks);
-            bar.setAttribute('data-title', p.title);
+            bar.style.height = Math.max(12, (clicks / max) * 120) + 'px';
 
             bar.addEventListener('mouseenter', function(e) {
                 if (tooltip) {
@@ -282,7 +261,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const label = document.createElement('div');
             label.className = 'bar-chart__label';
-            label.textContent = p.title.substr(0, 8);
+            label.textContent = p.title.slice(0, 8);
 
             const wrap = document.createElement('div');
             wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;flex:1;min-width:20px;';
@@ -295,20 +274,20 @@ document.addEventListener('DOMContentLoaded', function() {
     async function loadData() {
         const products = await getProducts();
         const events = await getEvents();
-        const { clickMap, viewMap, wishlistMap, pageViewCount } = calculateMetrics(events);
+        const { clickMap, wishlistMap, pageViewCount } = calculateMetrics(events);
 
         document.getElementById('adminTotalProducts').textContent = products.length;
         document.getElementById('adminTotalClicks').textContent = Object.values(clickMap).reduce((s, c) => s + c, 0);
         document.getElementById('adminTotalViews').textContent = pageViewCount || 0;
 
-        const totalWishlists = Object.values(wishlistMap).reduce((sum, val) => sum + val, 0);
+        const totalWishlists = Object.values(wishlistMap).reduce((sum, v) => sum + v, 0);
         const wishlistStatEl = document.getElementById('adminTotalWishlists');
         if (wishlistStatEl) wishlistStatEl.textContent = totalWishlists;
 
         let top = '—', topC = 0;
         products.forEach(p => {
             const c = clickMap[p.id] || 0;
-            if (c > topC) { topC = c; top = p.title.substr(0, 25); }
+            if (c > topC) { topC = c; top = p.title.slice(0, 25); }
         });
         document.getElementById('adminTopProduct').textContent = top;
 
@@ -345,7 +324,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const priority = clicks >= 10 ? '🔥 High' : clicks >= 4 ? '⭐ Medium' : 'Low';
 
             tbody.innerHTML += `<tr>
-                <td>${p.title.substr(0, 30)}</td>
+                <td>${p.title.slice(0, 30)}</td>
                 <td>${p.category}</td>
                 <td>${p.brand || '—'}</td>
                 <td><strong>${clicks}</strong></td>
@@ -371,15 +350,20 @@ document.addEventListener('DOMContentLoaded', function() {
         const thumbnailUrlInput = document.getElementById('inputThumbnailUrl');
         let thumbnailUrl = thumbnailUrlInput.value.trim();
 
-        // 🔥 Compress and convert thumbnail to base64
+        // Thumbnail: prefer uploaded file, fall back to URL input
         if (thumbnailFile && thumbnailFile.files.length > 0) {
             const file = thumbnailFile.files[0];
             try {
-                thumbnailUrl = await compressImage(file, 600, 0.7); // Max 600px wide, 70% quality
-                showToast('✅ Thumbnail uploaded and compressed!');
+                if (isHttp) {
+                    thumbnailUrl = await uploadThumbnailFile(file);
+                    showToast('✅ Thumbnail uploaded (WebP on server)');
+                } else {
+                    thumbnailUrl = await compressImage(file, 600, 0.7);
+                    showToast('✅ Thumbnail compressed (local mode)');
+                }
             } catch (err) {
-                console.error('❌ Thumbnail compression failed:', err);
-                showToast('❌ Upload failed: ' + err.message);
+                console.error('Thumbnail processing failed:', err);
+                showToast('❌ ' + err.message);
                 return;
             }
         }
@@ -389,47 +373,55 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Handle review photos - also compress them!
+        // Review photos: prefer upload, fall back to base64 on file://
         const files = document.getElementById('inputReviewPhotos')?.files || [];
         let reviewImages = existingProduct?.reviewImages || [];
         if (files.length > 0) {
-            const newImages = [];
-            for (let f of files) {
-                try {
-                    const compressed = await compressImage(f, 1200, 0.7); // Max 1200px wide, 70% quality
-                    newImages.push(compressed);
-                } catch (err) {
-                    console.warn('Failed to compress review photo:', err);
+            try {
+                if (isHttp) {
+                    reviewImages = await uploadReviewPhotosFiles(Array.from(files));
+                    showToast('✅ Review photos uploaded (WebP on server)');
+                } else {
+                    const newImages = [];
+                    for (const f of files) {
+                        try { newImages.push(await compressImage(f, 1200, 0.7)); }
+                        catch (err) { console.warn('Compress failed:', err); }
+                    }
+                    reviewImages = newImages;
                 }
+            } catch (err) {
+                console.error('Review photos upload failed:', err);
+                showToast('❌ ' + err.message);
+                return;
             }
-            reviewImages = newImages;
         }
 
         const productData = {
             dhgateLink: document.getElementById('inputDhgateLink').value,
-            thumbnailUrl: thumbnailUrl,
+            thumbnailUrl,
             title: document.getElementById('inputTitle').value,
             price: document.getElementById('inputPrice').value,
             affiliateLink: document.getElementById('inputAffiliateLink').value,
             category: document.getElementById('inputCategory').value,
             brand: document.getElementById('inputBrand').value.trim(),
             rating: document.getElementById('inputRating').value,
-            reviewImages: reviewImages,
+            reviewImages,
             createdAt: existingProduct?.createdAt || new Date().toISOString()
         };
 
         const product = { id: editingId || 'prod_' + Date.now(), ...productData };
         await upsertProductToServer(product);
 
+        // Local cache (drop review images to avoid localStorage quota)
         const localProduct = { ...product };
-        delete localProduct.reviewImages; // Don't cache review images in localStorage to prevent quota errors
+        delete localProduct.reviewImages;
         try {
             let products = JSON.parse(localStorage.getItem(STORAGE_PRODUCTS) || '[]');
             const idx = products.findIndex(p => p.id === localProduct.id);
             if (idx >= 0) products[idx] = localProduct;
             else products.unshift(localProduct);
             localStorage.setItem(STORAGE_PRODUCTS, JSON.stringify(products));
-        } catch (err) { console.warn('Local cache skipped'); }
+        } catch (err) { console.warn('Local cache skipped:', err); }
 
         showToast(editingId ? '✅ Product updated!' : '✅ Product added!');
         editingId = null;
@@ -445,7 +437,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const link = document.getElementById('inputDhgateLink')?.value;
         const priceInput = document.getElementById('inputPrice');
         if (!link || priceInput?.value) return;
-        let h = 0; for (let i = 0; i < link.length; i++) h = ((h << 5) - h) + link.charCodeAt(i);
+        let h = 0;
+        for (let i = 0; i < link.length; i++) h = ((h << 5) - h) + link.charCodeAt(i);
         priceInput.value = ((Math.abs(h) % 10500) / 100 + 15).toFixed(2);
     }
 
@@ -453,9 +446,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const container = document.getElementById('reviewPreviews');
         if (!container) return;
         container.innerHTML = '';
-        for (let f of this.files) {
+        for (const f of this.files) {
             const r = new FileReader();
-            r.onload = e => { const img = document.createElement('img'); img.src = e.target.result; container.appendChild(img); };
+            r.onload = e => {
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                container.appendChild(img);
+            };
             r.readAsDataURL(f);
         }
     }
@@ -472,6 +469,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function resetAnalytics() {
         if (!confirm('Reset all analytics?')) return;
+        if (!isHttp) {
+            localStorage.removeItem(STORAGE_ANALYTICS);
+            localStorage.removeItem(STORAGE_EVENTS);
+            showToast('✅ Local analytics reset');
+            loadData();
+            return;
+        }
         fetch('/api/events', { method: 'DELETE' })
         .then(res => res.json())
         .then(data => {
@@ -499,7 +503,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const products = await getProducts();
         const product = products.find(p => p.id === id);
         if (!product) return showToast('Product not found');
-        
+
         editingId = id;
         document.getElementById('inputDhgateLink').value = product.dhgateLink || '';
         document.getElementById('inputThumbnailUrl').value = product.thumbnailUrl || '';
@@ -510,15 +514,17 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('inputBrand').value = product.brand || '';
         document.getElementById('inputRating').value = product.rating || 4.5;
         document.getElementById('inputThumbnailFile').value = '';
-        
+
         const reviewContainer = document.getElementById('reviewPreviews');
         if (reviewContainer) {
             if (product.reviewImages && product.reviewImages.length > 0) {
-                reviewContainer.innerHTML = product.reviewImages.map(img => `<img src="${img}" alt="review" style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--glass-border);">`).join('');
+                reviewContainer.innerHTML = product.reviewImages.map(img =>
+                    `<img src="${img}" alt="review" style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--glass-border);">`
+                ).join('');
                 reviewContainer.innerHTML += `<div style="font-size:0.7rem;color:var(--text-muted);width:100%;margin-top:4px;">${product.reviewImages.length} existing image(s). Upload new ones to replace.</div>`;
             } else reviewContainer.innerHTML = '';
         }
-        
+
         const submitBtn = document.querySelector('#addProductForm button[type="submit"]');
         submitBtn.innerHTML = '<i class="bi bi-pencil-square"></i> Update Product';
         window.scrollTo({ top: document.getElementById('addProductForm').offsetTop - 100, behavior: 'smooth' });

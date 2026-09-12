@@ -16,29 +16,29 @@ function hasConsent() {
 function getVisitorId() {
     let id = getCookie('visitor_id');
     if (!id) {
-        id = 'v_' + Math.random().toString(36).substr(2, 9);
+        id = 'v_' + Math.random().toString(36).slice(2, 11);
         setCookie('visitor_id', id, 365);
     }
     return id;
 }
 
-// ---------- ⭐ Generate star HTML based on rating ----------
+// ---------- Star HTML ----------
 function getStarsHTML(rating) {
     const fullStars = Math.floor(rating);
     const halfStar = rating % 1 >= 0.5 ? 1 : 0;
     const emptyStars = 5 - fullStars - halfStar;
-    
     let stars = '';
-    for (let i = 0; i < fullStars; i++) {
-        stars += '<i class="bi bi-star-fill" style="font-size:0.8rem;"></i>';
-    }
-    if (halfStar) {
-        stars += '<i class="bi bi-star-half" style="font-size:0.8rem;"></i>';
-    }
-    for (let i = 0; i < emptyStars; i++) {
-        stars += '<i class="bi bi-star" style="font-size:0.8rem;"></i>';
-    }
+    for (let i = 0; i < fullStars; i++) stars += '<i class="bi bi-star-fill" style="font-size:0.8rem;"></i>';
+    if (halfStar) stars += '<i class="bi bi-star-half" style="font-size:0.8rem;"></i>';
+    for (let i = 0; i < emptyStars; i++) stars += '<i class="bi bi-star" style="font-size:0.8rem;"></i>';
     return stars;
+}
+
+// ---------- Escape helper (escapes quotes too) ----------
+function escapeHTML(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
 }
 
 // ---------- Global event queue ----------
@@ -51,45 +51,32 @@ function sendEvent(event) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(event),
             keepalive: true,
-        })
-        .then(res => {
-            if (res.ok) {
-                console.log(`✅ Event sent: ${event.type} for ${event.productId}`);
-            } else {
-                console.warn(`⚠️ Event send returned ${res.status}: ${event.type}`);
-            }
-        })
-        .catch(err => console.warn('❌ Event send failed:', err));
+        }).catch(err => console.warn('❌ Event send failed:', err));
     } else {
-        console.log(`⏳ Event queued: ${event.type} for ${event.productId}`);
         pendingEvents.push(event);
     }
 }
 
 function flushPendingEvents() {
     if (pendingEvents.length) {
-        console.log(`🔄 Sending ${pendingEvents.length} queued events...`);
         const eventsToSend = pendingEvents.slice();
         pendingEvents = [];
         eventsToSend.forEach(ev => sendEvent(ev));
     }
 }
 
-// ---------- 🔥 Helper: Proxy image through our server ----------
+// ---------- Image proxy helper ----------
 function getProxiedImage(url) {
     if (!url) return '';
-    // If it's already a proxied URL or a local image, return as-is
     if (url.startsWith('/api/image') || url.startsWith('/uploads/') || url.startsWith('data:')) {
         return url;
     }
     return '/api/image?url=' + encodeURIComponent(url);
 }
 
-// ---------- safety wrapper ----------
+// ---------- Main ----------
 document.addEventListener('DOMContentLoaded', function () {
     'use strict';
-
-    console.log('✅ DOM ready – starting script');
 
     const $productsGrid = document.getElementById('productsGrid');
     const $emptyState = document.getElementById('emptyState');
@@ -102,11 +89,9 @@ document.addEventListener('DOMContentLoaded', function () {
     let currentFilter = 'all';
     let currentBrand = null;
 
-    // ---------- currency state ----------
     let currentCurrency = 'USD';
     let currentRate = 1;
 
-    // ---- quick existence check ----
     const missing = [];
     if (!$productsGrid) missing.push('productsGrid');
     if (!$emptyState) missing.push('emptyState');
@@ -118,91 +103,75 @@ document.addEventListener('DOMContentLoaded', function () {
         console.error('❌ Missing elements:', missing.join(', '));
         return;
     }
-    console.log('✅ All key elements found');
 
-    // ---------- storage keys ----------
     const STORAGE_PRODUCTS = 'dhgatevault_products';
-    const STORAGE_ANALYTICS = 'dhgatevault_analytics';
     const STORAGE_VIEWS = 'dhgatevault_pageviews';
     const STORAGE_THEME = 'dhgatevault_theme';
-    const STORAGE_VIEWED_IMAGES = 'dhgatevault_viewed_images';
     const STORAGE_WISHLIST = 'dhgatevault_wishlist';
 
-    // ---------- in-memory event buffer ----------
-    const eventBuffer = [];
+    // ---------- Product cache ----------
+    let _productCache = null;
 
-    // ---------- data helpers ----------
-    // 🔥 UPDATED: Removed ?t=Date.now() so the browser can cache products (server sends Cache-Control: max-age=300)
-    async function getProducts() {
+    async function getProducts(force = false) {
+        if (_productCache && !force) return _productCache;
         if (window.location.protocol.startsWith('http')) {
             try {
                 const res = await fetch('/api/products');
-                if (res.ok) return await res.json();
+                if (res.ok) {
+                    _productCache = await res.json();
+                    return _productCache;
+                }
             } catch (e) {
                 console.warn('Server product fetch failed, using local storage');
             }
         }
-        return JSON.parse(localStorage.getItem(STORAGE_PRODUCTS) || '[]');
-    }
-
-    function getAnalytics() {
-        try { return JSON.parse(localStorage.getItem(STORAGE_ANALYTICS)) || {}; } catch (e) { return {}; }
+        try {
+            _productCache = JSON.parse(localStorage.getItem(STORAGE_PRODUCTS) || '[]');
+        } catch {
+            _productCache = [];
+        }
+        return _productCache;
     }
 
     function incrementPageViews() {
         const v = (parseInt(localStorage.getItem(STORAGE_VIEWS)) || 0) + 1;
         localStorage.setItem(STORAGE_VIEWS, v);
-        
-        const visitorId = getVisitorId();
-        const event = {
+        sendEvent({
             type: 'page_view',
             productId: 'site-wide',
-            visitorId,
+            visitorId: getVisitorId(),
             timestamp: new Date().toISOString(),
             count: v,
-        };
-        sendEvent(event);
+        });
     }
 
     function recordEvent(type, productId, meta = {}) {
-        const visitorId = getVisitorId();
-        const event = {
+        sendEvent({
             type,
             productId,
-            visitorId,
+            visitorId: getVisitorId(),
             timestamp: new Date().toISOString(),
             ...meta,
-        };
-        eventBuffer.push(event);
-        console.log(`📊 [${type}] Event for ${productId}:`, event);
-        sendEvent(event);
+        });
     }
 
-    // ---------- wishlist functions ----------
+    // ---------- Wishlist ----------
     function getWishlist() {
-        try { return JSON.parse(localStorage.getItem(STORAGE_WISHLIST) || '[]'); } catch (e) { return []; }
+        try { return JSON.parse(localStorage.getItem(STORAGE_WISHLIST) || '[]'); }
+        catch { return []; }
     }
-    function saveWishlist(wishlist) {
-        localStorage.setItem(STORAGE_WISHLIST, JSON.stringify(wishlist));
+    function saveWishlist(w) {
+        localStorage.setItem(STORAGE_WISHLIST, JSON.stringify(w));
     }
     function toggleWishlist(productId) {
-        console.log(`💖 toggleWishlist called for ${productId}`);
         let wishlist = getWishlist();
         const idx = wishlist.indexOf(productId);
-        let action = '';
-        if (idx >= 0) {
-            wishlist.splice(idx, 1);
-            action = 'removed';
-            console.log(`💖 Removed from wishlist: ${productId}`);
-        } else {
-            wishlist.push(productId);
-            action = 'added';
-            console.log(`💖 Added to wishlist: ${productId}`);
-        }
+        const action = idx >= 0 ? 'removed' : 'added';
+        if (idx >= 0) wishlist.splice(idx, 1);
+        else wishlist.push(productId);
         saveWishlist(wishlist);
         updateWishlistButtons();
-        console.log(`💖 Sending wishlist event: ${action} for ${productId}`);
-        recordEvent('wishlist', productId, { action: action });
+        recordEvent('wishlist', productId, { action });
     }
     window.toggleWishlist = toggleWishlist;
 
@@ -220,7 +189,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // ---------- image view deduplication (session-only) ----------
     const viewedImages = new Set();
     function isUniqueImageView(productId, imageSrc) {
         const key = `${productId}_${imageSrc}`;
@@ -229,11 +197,9 @@ document.addEventListener('DOMContentLoaded', function () {
         return true;
     }
 
-    // ---------- lightbox ----------
+    // ---------- Lightbox ----------
     window.openLightbox = function (src) {
-        // Proxy the image if it's a DHGate URL
-        const proxiedSrc = getProxiedImage(src);
-        $lightboxImage.src = proxiedSrc;
+        $lightboxImage.src = getProxiedImage(src);
         $lightboxOverlay.classList.add('modal-overlay--active');
         try {
             const thumb = document.querySelector(`img[src="${src}"]`);
@@ -242,9 +208,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (productId && isUniqueImageView(productId, src)) {
                 recordEvent('image_view', productId, { image: src });
             }
-        } catch (err) {
-            console.warn('Image view tracking skipped:', err);
-        }
+        } catch (err) { /* skip */ }
     };
     function closeLightbox() { $lightboxOverlay.classList.remove('modal-overlay--active'); }
     document.getElementById('btnLightboxClose').addEventListener('click', closeLightbox);
@@ -252,30 +216,17 @@ document.addEventListener('DOMContentLoaded', function () {
         if (e.target === $lightboxOverlay) closeLightbox();
     });
 
-    // ---------- toast ----------
+    // ---------- Toast ----------
     function showToast(msg) {
         const t = document.createElement('div');
         t.className = 'toast';
         t.textContent = msg;
-
-        const theme = document.documentElement.getAttribute('data-theme') || 'dark';
-        if (theme === 'light') {
-            t.style.color = '#1f2035';
-            t.style.backgroundColor = '#ffffff';
-            t.style.border = '1px solid rgba(0,0,0,0.1)';
-        } else {
-            t.style.color = '#ffffff';
-            t.style.backgroundColor = '#0d0d18';
-            t.style.border = '1px solid rgba(255,255,255,0.06)';
-        }
-
         $toastContainer.appendChild(t);
         setTimeout(() => t.remove(), 2000);
     }
 
-    // ---------- 🔥 UPDATED: renderProducts with Skeleton Loader ----------
+    // ---------- Render products ----------
     async function renderProducts(filter = 'all') {
-        // 🔥 Show skeleton loaders immediately (perceived performance boost)
         $productsGrid.innerHTML = `
             <div class="product-card skeleton"></div>
             <div class="product-card skeleton"></div>
@@ -287,12 +238,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const products = await getProducts();
         let filtered = products;
-        if (filter !== 'all') {
-            filtered = filtered.filter(p => p.category === filter);
-        }
-        if (currentBrand) {
-            filtered = filtered.filter(p => p.brand === currentBrand);
-        }
+        if (filter !== 'all') filtered = filtered.filter(p => p.category === filter);
+        if (currentBrand) filtered = filtered.filter(p => p.brand === currentBrand);
+
         $productsGrid.innerHTML = '';
         if (filtered.length === 0) {
             $productsGrid.style.display = 'none';
@@ -301,53 +249,41 @@ document.addEventListener('DOMContentLoaded', function () {
             $productsGrid.style.display = '';
             $emptyState.style.display = 'none';
         }
-        
-        // 🔥 Preload the first product image (LCP optimization)
-        if (filtered.length > 0) {
-            const firstImage = filtered[0].thumbnailUrl;
-            if (firstImage) {
-                const proxiedUrl = getProxiedImage(firstImage);
-                // Remove existing preload if any
-                const existing = document.querySelector('link[rel="preload"][as="image"]');
-                if (existing) existing.remove();
-                const preloadLink = document.createElement('link');
-                preloadLink.rel = 'preload';
-                preloadLink.as = 'image';
-                preloadLink.href = proxiedUrl;
-                preloadLink.fetchPriority = 'high';
-                document.head.appendChild(preloadLink);
-                console.log('🔁 Preloaded LCP image:', proxiedUrl);
-            }
+
+        if (filtered.length > 0 && filtered[0].thumbnailUrl) {
+            const proxiedUrl = getProxiedImage(filtered[0].thumbnailUrl);
+            const existing = document.querySelector('link[rel="preload"][as="image"]');
+            if (existing) existing.remove();
+            const preloadLink = document.createElement('link');
+            preloadLink.rel = 'preload';
+            preloadLink.as = 'image';
+            preloadLink.href = proxiedUrl;
+            preloadLink.fetchPriority = 'high';
+            document.head.appendChild(preloadLink);
         }
-        
-        // ✅ Pass index to createCard
+
         filtered.forEach((p, index) => $productsGrid.appendChild(createCard(p, index)));
         updateWishlistButtons();
         convertPrices();
         updateBrandSidebar(products, filter);
     }
 
-    // ---------- 🔥 createCard – uses proxied images, first 4 load immediately ----------
     function createCard(p, index) {
         const card = document.createElement('div');
         card.className = 'product-card';
         card.dataset.productId = p.id;
 
-        // First 4 products: no lazy-load, high priority (covers the fold on desktop & mobile)
         const isAboveFold = index < 4;
         const loadingAttr = isAboveFold ? '' : 'loading="lazy"';
         const fetchPriority = isAboveFold ? 'fetchpriority="high"' : '';
-
-        // 🔥 Proxy the main image
         const proxiedMainImage = getProxiedImage(p.thumbnailUrl);
 
-        // Proxy review images too
         const reviewThumbs = (p.reviewImages || []).map(img =>
-            `<img class="product-card__review-thumb" src="${getProxiedImage(img)}"
+            `<img class="product-card__review-thumb" src="${escapeHTML(getProxiedImage(img))}"
                 alt="${escapeHTML(p.title)} review photo"
                 width="44" height="44"
                 loading="lazy"
-                onclick="event.stopPropagation(); window.openLightbox('${escapeHTML(img)}')"
+                data-lightbox-src="${escapeHTML(img)}"
                 onerror="this.style.display='none'">`
         ).join('');
 
@@ -359,7 +295,7 @@ document.addEventListener('DOMContentLoaded', function () {
                      ${fetchPriority}
                      onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22300%22><rect fill=%22%231a1a2e%22 width=%22300%22 height=%22300%22/><text fill=%22%23666%22 x=%2250%25%22 y=%2250%25%22 dy=%22.3em%22>Image</text></svg>'">
                 <div class="product-card__dhgate-badge"><i class="bi bi-diamond-fill"></i> DHGate</div>
-                <button class="product-card__wishlist-btn" data-product-id="${p.id}" aria-label="Add to wishlist" onclick="event.stopPropagation(); toggleWishlist('${p.id}')">
+                <button class="product-card__wishlist-btn" data-product-id="${escapeHTML(p.id)}" aria-label="Add to wishlist">
                     <i class="bi bi-heart" aria-hidden="true"></i>
                 </button>
                 ${(p.reviewImages || []).length > 0 ? `<div style="position:absolute;top:52px;right:12px;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);padding:3px 10px;border-radius:5px;font-size:0.65rem;color:#fff;"><i class="bi bi-camera-fill"></i> ${p.reviewImages.length}</div>` : ''}
@@ -380,8 +316,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="product-card__actions">
                     <a href="${escapeHTML(p.affiliateLink)}" class="product-card__affiliate-btn"
                        target="_blank" rel="sponsored"
-                       data-product-id="${p.id}"
-                       onclick="window._dhgv_click('${p.id}')">
+                       data-product-id="${escapeHTML(p.id)}">
                         <i class="bi bi-cart-fill"></i> Shop Now
                     </a>
                     <button class="product-card__copy-btn" data-copy-link="${escapeHTML(p.affiliateLink)}">
@@ -401,30 +336,19 @@ document.addEventListener('DOMContentLoaded', function () {
         return card;
     }
 
-    // ---------- brand sidebar ----------
+    // ---------- Brand sidebar ----------
     function updateBrandSidebar(products, category) {
         if (!$brandSidebar || !$brandList) return;
-        if (category === 'all') {
-            $brandSidebar.style.display = 'none';
-            return;
-        }
+        if (category === 'all') { $brandSidebar.style.display = 'none'; return; }
         const brands = [...new Set(products.filter(p => p.category === category).map(p => p.brand).filter(Boolean))];
-        if (brands.length === 0) {
-            $brandSidebar.style.display = 'none';
-            return;
-        }
+        if (brands.length === 0) { $brandSidebar.style.display = 'none'; return; }
         $brandSidebar.style.display = 'block';
         $brandList.innerHTML = '<button class="brand-item active" data-brand="">All Brands</button>';
         brands.forEach(brand => {
-            $brandList.innerHTML += `<button class="brand-item" data-brand="${brand}">${brand}</button>`;
+            $brandList.innerHTML += `<button class="brand-item" data-brand="${escapeHTML(brand)}">${escapeHTML(brand)}</button>`;
         });
-        const buttons = $brandList.querySelectorAll('.brand-item');
-        buttons.forEach(btn => {
-            if (btn.dataset.brand === (currentBrand || '')) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
-            }
+        $brandList.querySelectorAll('.brand-item').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.brand === (currentBrand || ''));
         });
     }
 
@@ -437,7 +361,7 @@ document.addEventListener('DOMContentLoaded', function () {
         renderProducts(currentFilter);
     });
 
-    // ---------- currency localization ----------
+    // ---------- Currency ----------
     const currencyMap = {
         US: 'USD', GB: 'GBP', IE: 'EUR', DE: 'EUR', FR: 'EUR', ES: 'EUR',
         IT: 'EUR', NL: 'EUR', BE: 'EUR', AT: 'EUR', CA: 'CAD', AU: 'AUD',
@@ -470,7 +394,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     async function fetchExchangeRate(currency) {
         try {
-            const res = await fetch(`https://open.er-api.com/v6/latest/USD`);
+            const res = await fetch('https://open.er-api.com/v6/latest/USD');
             const data = await res.json();
             return data.rates[currency] || staticRates[currency] || 1;
         } catch {
@@ -478,7 +402,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    async function convertPrices() {
+    function convertPrices() {
         const formatter = new Intl.NumberFormat(undefined, { style: 'currency', currency: currentCurrency });
         document.querySelectorAll('.product-card__price').forEach(el => {
             const usd = parseFloat(el.dataset.usdPrice);
@@ -486,27 +410,20 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // ---------- 🔥 UPDATED: Fixed currency dropdown ----------
     async function initCurrency() {
-        console.log('🔁 initCurrency starting...');
         const cookieCurrency = getCookie('preferred_currency');
-        let currency = cookieCurrency || (await fetchCurrencyCode());
+        const currency = cookieCurrency || (await fetchCurrencyCode());
         currentCurrency = currency;
         currentRate = await fetchExchangeRate(currency);
         setCookie('preferred_currency', currency, 365);
         updateCurrencyDisplay(currency);
-        convertPrices();
+        // NOTE: convertPrices() is called by renderProducts — no need to duplicate here
 
         const dropdown = document.getElementById('currencyDropdown');
         const trigger = dropdown?.querySelector('.currency-dropdown__trigger');
         const menu = document.getElementById('currencyMenu');
+        if (!dropdown || !trigger || !menu) return;
 
-        if (!dropdown || !trigger || !menu) {
-            console.error('❌ Currency dropdown elements missing!');
-            return;
-        }
-
-        // Remove any old listeners to avoid duplicates
         const newTrigger = trigger.cloneNode(true);
         trigger.parentNode.replaceChild(newTrigger, trigger);
         const newMenu = menu.cloneNode(true);
@@ -515,29 +432,21 @@ document.addEventListener('DOMContentLoaded', function () {
         newTrigger.addEventListener('click', (e) => {
             e.stopPropagation();
             dropdown.classList.toggle('open');
-            console.log('🔽 Dropdown toggled:', dropdown.classList.contains('open'));
         });
-
         document.addEventListener('click', (e) => {
-            if (!dropdown.contains(e.target)) {
-                dropdown.classList.remove('open');
-            }
+            if (!dropdown.contains(e.target)) dropdown.classList.remove('open');
         });
-
         newMenu.addEventListener('click', async (e) => {
             const option = e.target.closest('.currency-option');
             if (!option) return;
             const selected = option.dataset.currency;
-            console.log('💱 Currency selected:', selected);
             currentCurrency = selected;
             currentRate = await fetchExchangeRate(selected);
             updateCurrencyDisplay(selected);
-            document.cookie = `preferred_currency=${selected};max-age=31536000;path=/`;
+            setCookie('preferred_currency', selected, 365);
             convertPrices();
             dropdown.classList.remove('open');
         });
-
-        console.log('✅ Currency dropdown initialised');
     }
 
     function updateCurrencyDisplay(currency) {
@@ -548,45 +457,63 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // ---------- copy / click handlers ----------
+    // ---------- Copy handler ----------
     function legacyCopy(text) {
         const textarea = document.createElement('textarea');
         textarea.value = text;
-        textarea.style.position = 'fixed';
-        textarea.style.left = '0';
-        textarea.style.top = '0';
-        textarea.style.width = '1px';
-        textarea.style.height = '1px';
-        textarea.style.opacity = '0.01';
+        textarea.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0.01;';
         document.body.appendChild(textarea);
         textarea.focus();
         textarea.select();
-        try { document.execCommand('copy'); showToast('Affiliate link copied!'); } catch (err) { alert('Copy failed – please copy the link manually.'); }
+        try { document.execCommand('copy'); showToast('Affiliate link copied!'); }
+        catch { alert('Copy failed – please copy the link manually.'); }
         document.body.removeChild(textarea);
     }
 
     $productsGrid.addEventListener('click', e => {
         const copyBtn = e.target.closest('.product-card__copy-btn');
-        if (!copyBtn) return;
-        e.preventDefault();
-        const rawLink = copyBtn.getAttribute('data-copy-link') || '';
-        const decoder = document.createElement('textarea');
-        decoder.innerHTML = rawLink;
-        const cleanLink = decoder.value;
-        if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(cleanLink).then(() => showToast('Affiliate link copied!')).catch(() => legacyCopy(cleanLink));
-        } else {
-            legacyCopy(cleanLink);
+        if (copyBtn) {
+            e.preventDefault();
+            const rawLink = copyBtn.getAttribute('data-copy-link') || '';
+            const decoder = document.createElement('textarea');
+            decoder.innerHTML = rawLink;
+            const cleanLink = decoder.value;
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(cleanLink).then(() => showToast('Affiliate link copied!')).catch(() => legacyCopy(cleanLink));
+            } else {
+                legacyCopy(cleanLink);
+            }
+            return;
+        }
+
+        const wishlistBtn = e.target.closest('.product-card__wishlist-btn');
+        if (wishlistBtn) {
+            e.stopPropagation();
+            toggleWishlist(wishlistBtn.dataset.productId);
+            return;
+        }
+
+        const lightboxThumb = e.target.closest('.product-card__review-thumb');
+        if (lightboxThumb) {
+            e.stopPropagation();
+            window.openLightbox(lightboxThumb.dataset.lightboxSrc);
+            return;
+        }
+
+        const affiliateBtn = e.target.closest('.product-card__affiliate-btn');
+        if (affiliateBtn) {
+            recordEvent('click', affiliateBtn.dataset.productId, { link: affiliateBtn.href });
+            return;
+        }
+
+        const card = e.target.closest('.product-card');
+        if (card && card.dataset.productId) {
+            const mainImg = card.querySelector('.product-card__main-img');
+            if (mainImg) window.openLightbox(mainImg.getAttribute('data-original-src') || mainImg.src);
         }
     });
 
-    function escapeHTML(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-
-    window._dhgv_click = function (id) {
-        recordEvent('click', id, { link: document.querySelector(`a[data-product-id="${id}"]`)?.href || '' });
-    };
-
-    // ---------- filters ----------
+    // ---------- Filters ----------
     $filtersContainer.addEventListener('click', e => {
         if (e.target.classList.contains('filter-pill')) {
             document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('filter-pill--active'));
@@ -597,27 +524,27 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // ---------- cross-tab sync ----------
+    // ---------- Cross-tab sync ----------
     window.addEventListener('storage', (e) => {
-        if (e.key === STORAGE_PRODUCTS) renderProducts(currentFilter);
+        if (e.key === STORAGE_PRODUCTS) {
+            _productCache = null;
+            renderProducts(currentFilter);
+        }
     });
 
-    // ---------- theme toggle ----------
+    // ---------- Theme ----------
     const themeToggle = document.getElementById('themeToggle');
     const themeIcon = themeToggle?.querySelector('i');
     function setTheme(theme) {
         document.documentElement.setAttribute('data-theme', theme);
         localStorage.setItem(STORAGE_THEME, theme);
-
         const favicon = document.getElementById('favicon');
         if (favicon) {
             favicon.href = theme === 'light' ? '/fav/faviconlight.ico' : '/fav/favicondark.ico';
         }
-
         if (themeIcon) themeIcon.className = theme === 'light' ? 'bi bi-moon-fill' : 'bi bi-sun-fill';
     }
-    const savedTheme = localStorage.getItem(STORAGE_THEME) || 'dark';
-    setTheme(savedTheme);
+    setTheme(localStorage.getItem(STORAGE_THEME) || 'dark');
     if (themeToggle) {
         themeToggle.addEventListener('click', () => {
             const current = document.documentElement.getAttribute('data-theme') || 'dark';
@@ -625,52 +552,40 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // ---------- start everything ----------
+    // ---------- Start ----------
     incrementPageViews();
-    initCurrency().then(() => {
-        return renderProducts();
-    }).then(() => {
-        console.log('🚀 Storefront ready – visual star ratings active!');
-    });
+    initCurrency().then(() => renderProducts());
 });
 
-// Enhanced Cookie consent – flush pending events when consent is given
+// ---------- Cookie consent ----------
 document.addEventListener('DOMContentLoaded', () => {
     const banner = document.getElementById('cookieConsent');
     const acceptBtn = document.getElementById('cookieAccept');
+    if (!banner) return;
 
-    if (banner) {
-        if (hasConsent()) {
-            banner.style.display = 'none';
-            setTimeout(flushPendingEvents, 500);
-        }
-
-        acceptBtn?.addEventListener('click', () => {
-            setCookie('cookie_consent', 'accepted', 365);
-            localStorage.setItem('cookie_consent', 'true');
-            banner.style.display = 'none';
-
-            fetch('/api/event', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    type: 'cookie_consent',
-                    productId: 'site-wide',
-                    visitorId: getVisitorId(),
-                    timestamp: new Date().toISOString()
-                })
-            }).then(() => {
-                console.log('✅ Cookie consent accepted – event sent');
-                flushPendingEvents();
-            }).catch(err => {
-                console.warn('Cookie consent event not sent:', err);
-                flushPendingEvents();
-            });
-        });
+    if (hasConsent()) {
+        banner.style.display = 'none';
+        setTimeout(flushPendingEvents, 500);
     }
+
+    acceptBtn?.addEventListener('click', () => {
+        setCookie('cookie_consent', 'accepted', 365);
+        localStorage.setItem('cookie_consent', 'true');
+        banner.style.display = 'none';
+        fetch('/api/event', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                type: 'cookie_consent',
+                productId: 'site-wide',
+                visitorId: getVisitorId(),
+                timestamp: new Date().toISOString()
+            })
+        }).then(flushPendingEvents).catch(flushPendingEvents);
+    });
 });
 
-// Subtle cursor glow
+// ---------- Cursor glow ----------
 const glow = document.getElementById('cursorGlow');
 if (glow && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
     glow.style.display = 'block';
