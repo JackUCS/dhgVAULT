@@ -848,6 +848,78 @@ body {
 }
 .admin-table tr:hover td { background: var(--surface-hover); }
 
+/* ===========================
+   🔥 NEW: TOGGLE LABEL (Hide from storefront checkbox)
+   =========================== */
+.toggle-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: none;
+    letter-spacing: normal;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    border: 1px solid var(--glass-border);
+    transition: var(--transition);
+    user-select: none;
+    margin-bottom: 0;
+}
+.toggle-label:hover {
+    border-color: var(--glass-border-hover);
+    background: var(--surface-hover);
+    color: var(--text-primary);
+}
+.toggle-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent);
+    cursor: pointer;
+    margin: 0;
+    flex-shrink: 0;
+    padding: 0;
+}
+
+/* ===========================
+   🔥 NEW: STATUS BADGE (Visible / Hidden in table)
+   =========================== */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    border: 1px solid transparent;
+    user-select: none;
+    white-space: nowrap;
+}
+.status-badge--visible {
+    background: rgba(52, 211, 153, 0.1);
+    color: var(--success);
+    border-color: rgba(52, 211, 153, 0.25);
+}
+.status-badge--visible:hover {
+    background: rgba(52, 211, 153, 0.2);
+    border-color: rgba(52, 211, 153, 0.5);
+}
+.status-badge--hidden {
+    background: rgba(248, 113, 113, 0.1);
+    color: var(--danger);
+    border-color: rgba(248, 113, 113, 0.25);
+}
+.status-badge--hidden:hover {
+    background: rgba(248, 113, 113, 0.2);
+    border-color: rgba(248, 113, 113, 0.5);
+}
+
 .bar-chart-wrapper { position: relative; min-height: 120px; }
 .bar-chart { display: flex; align-items: flex-end; gap: 10px; height: 100px; }
 .bar-chart__bar {

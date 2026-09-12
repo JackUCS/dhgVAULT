@@ -204,8 +204,6 @@ document.addEventListener('DOMContentLoaded', function () {
         $lightboxImage.src = getProxiedImage(src);
         $lightboxOverlay.classList.add('modal-overlay--active');
         try {
-            // Find the product card by ID via the src we were given — use CSS.escape
-            // so base64 data URLs (which contain quotes/slashes) don't break the selector
             let productId = null;
             const safeSrc = CSS.escape(src);
             const thumb = document.querySelector(
@@ -215,7 +213,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 const card = thumb.closest('.product-card');
                 productId = card?.dataset?.productId || null;
             } else {
-                // Fallback: find a card whose main image matches
                 const mainImgs = document.querySelectorAll('.product-card__main-img');
                 for (const img of mainImgs) {
                     const card = img.closest('.product-card');
@@ -259,7 +256,8 @@ document.addEventListener('DOMContentLoaded', function () {
             $productsGrid.style.display = '';
             $emptyState.style.display = 'none';
 
-            const products = await getProducts();
+            // 🔥 Filter out hidden products before building cards
+            const products = (await getProducts()).filter(p => !p.hidden);
 
             $productsGrid.innerHTML = '';
             products.forEach((p, index) => {
@@ -302,7 +300,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         updateWishlistButtons();
         convertPrices();
-        updateBrandSidebar(_productCache || [], filter);
+        // 🔥 Also filter hidden products from the brand sidebar
+        updateBrandSidebar((_productCache || []).filter(p => !p.hidden), filter);
     }
 
     function createCard(p, index) {
@@ -362,9 +361,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 </div>
             </div>`;
 
-        // 🔥 FIX: Direct click listener on the main thumbnail — opens lightbox
-        // with the ORIGINAL thumbnailUrl (not the already-proxied src), so
-        // getProxiedImage() proxies it exactly once instead of double-wrapping.
         const mainImg = card.querySelector('.product-card__main-img');
         if (mainImg) {
             mainImg.style.cursor = 'zoom-in';
@@ -554,10 +550,6 @@ document.addEventListener('DOMContentLoaded', function () {
             recordEvent('click', affiliateBtn.dataset.productId, { link: affiliateBtn.href });
             return;
         }
-
-        // NOTE: The main-thumbnail lightbox click is handled by a direct listener
-        // attached in createCard(). No delegated fallback here — that used to
-        // double-proxy the URL and hit the SSRF whitelist.
     });
 
     // ---------- Filters ----------

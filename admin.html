@@ -121,7 +121,16 @@
                                 <input type="file" id="inputReviewPhotos" accept="image/*" multiple>
                             </div>
                         </div>
-                        <!-- 🔥 NEW: Thumbnail upload section -->
+                        <!-- 🔥 NEW: Hide from storefront toggle -->
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="toggle-label">
+                                    <input type="checkbox" id="inputHidden">
+                                    <span>Hide from storefront</span>
+                                </label>
+                            </div>
+                        </div>
+                        <!-- 🔥 Thumbnail upload section -->
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Thumbnail URL</label>
@@ -192,7 +201,8 @@
                                     <th>Clicks</th>
                                     <th>Wishlists</th>
                                     <th>Priority</th>
-                                    <th style="width:100px;">Actions</th>
+                                    <th>Status</th>
+                                    <th style="width:110px;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="adminTableBody"></tbody>
@@ -213,7 +223,7 @@
         </main>
     </div>
     
-    <script src="admin.min.js?v=2049"></script>
+    <script src="admin.min.js?v=2050"></script>
 
 </body>
 </html>

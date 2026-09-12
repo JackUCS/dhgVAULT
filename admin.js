@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return data.urls;
     }
 
-    // 🔥 NEW: fetch a remote URL through the server, get back a local /uploads/ path
+    // Fetch a remote URL through the server, get back a local /uploads/ path
     async function fetchThumbnailFromUrl(url) {
         const res = await fetch('/api/fetch-thumbnail', {
             method: 'POST',
@@ -334,6 +334,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const wishlists = wishlistMap[p.id] || 0;
             const priority = clicks >= 10 ? '🔥 High' : clicks >= 4 ? '⭐ Medium' : 'Low';
 
+            const hidden = !!p.hidden;
+            const statusBadge = hidden
+                ? `<span class="status-badge status-badge--hidden" onclick="toggleHidden('${p.id}')" title="Click to show on storefront">🙈 Hidden</span>`
+                : `<span class="status-badge status-badge--visible" onclick="toggleHidden('${p.id}')" title="Click to hide from storefront">👁️ Visible</span>`;
+
             tbody.innerHTML += `<tr>
                 <td>${p.title.slice(0, 30)}</td>
                 <td>${p.category}</td>
@@ -341,6 +346,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <td><strong>${clicks}</strong></td>
                 <td><strong>${wishlists}</strong></td>
                 <td>${priority}</td>
+                <td>${statusBadge}</td>
                 <td>
                     <button class="btn btn--ghost btn--sm" onclick="editProduct('${p.id}')" title="Edit"><i class="bi bi-pencil"></i></button>
                     <button class="btn btn--ghost btn--sm btn--danger" onclick="deleteProduct('${p.id}')" title="Delete"><i class="bi bi-trash"></i></button>
@@ -378,14 +384,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
         } else if (thumbnailUrl && isHttp && !thumbnailUrl.startsWith('/uploads/') && !thumbnailUrl.startsWith('data:')) {
-            // 🔥 NEW: fetch the remote URL server-side and convert to local WebP
             try {
                 const localUrl = await fetchThumbnailFromUrl(thumbnailUrl);
                 thumbnailUrl = localUrl;
                 showToast('✅ Thumbnail fetched & optimised');
             } catch (err) {
                 console.warn('Fetch-thumbnail failed, keeping remote URL:', err);
-                // fall through with the original URL — storefront will proxy it
             }
         }
 
@@ -427,6 +431,7 @@ document.addEventListener('DOMContentLoaded', function() {
             brand: document.getElementById('inputBrand').value.trim(),
             rating: document.getElementById('inputRating').value,
             reviewImages,
+            hidden: document.getElementById('inputHidden')?.checked || false,
             createdAt: existingProduct?.createdAt || new Date().toISOString()
         };
 
@@ -519,6 +524,30 @@ document.addEventListener('DOMContentLoaded', function() {
         showToast('🗑️ Product deleted');
     };
 
+    // 🔥 NEW: toggle hidden flag
+    window.toggleHidden = async function(id) {
+        const products = await getProducts();
+        const product = products.find(p => p.id === id);
+        if (!product) return showToast('Product not found');
+
+        product.hidden = !product.hidden;
+        const ok = await upsertProductToServer(product);
+        if (!ok && isHttp) return showToast('❌ Failed to update');
+
+        // Sync local fallback copy
+        try {
+            let local = JSON.parse(localStorage.getItem(STORAGE_PRODUCTS) || '[]');
+            const idx = local.findIndex(p => p.id === id);
+            if (idx >= 0) {
+                local[idx].hidden = product.hidden;
+                localStorage.setItem(STORAGE_PRODUCTS, JSON.stringify(local));
+            }
+        } catch {}
+
+        await loadData();
+        showToast(product.hidden ? '🙈 Hidden from storefront' : '👁️ Visible on storefront');
+    };
+
     window.editProduct = async function(id) {
         const products = await getProducts();
         const product = products.find(p => p.id === id);
@@ -533,6 +562,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('inputCategory').value = product.category || 'shirts';
         document.getElementById('inputBrand').value = product.brand || '';
         document.getElementById('inputRating').value = product.rating || 4.5;
+        document.getElementById('inputHidden').checked = !!product.hidden;
         document.getElementById('inputThumbnailFile').value = '';
 
         const reviewContainer = document.getElementById('reviewPreviews');
